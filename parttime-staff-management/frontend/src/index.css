@@ -1,0 +1,493 @@
+/* file: frontend/src/index.css (Phiên bản Nâng cấp) */
+
+/* --- 1. Import Font & Biến Toàn cục --- */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  /* Bảng màu chính (Modern Indigo) */
+  --primary-color: #6366f1;
+  --primary-color-dark: #4f46e5;
+  --primary-color-light: #eef2ff; /* Dùng cho hover, background */
+
+  /* Bảng màu xám (Grays) */
+  --bg-color: #f8f9fa;
+  --card-bg-color: #ffffff;
+  --border-color: #e5e7eb;
+  --text-color: #1f2937;
+  --text-color-light: #6b7280;
+
+  /* Màu Phản hồi (Feedback) */
+  --error-color: #ef4444;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+
+  /* Kích thước & Bóng (Shadows) */
+  --navbar-height: 60px;
+  --sidebar-width: 240px;
+  --border-radius: 8px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* --- 2. Reset & Body --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+a:hover {
+  color: var(--primary-color-dark);
+}
+
+/* --- 3. Trang Đăng nhập / Đăng ký --- */
+.auth-page {
+  max-width: 450px;
+  margin: 5vh auto;
+  padding: 2.5rem;
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  border-top: 4px solid var(--primary-color);
+}
+.auth-page h2 {
+  text-align: center;
+  margin-bottom: 2rem;
+  font-weight: 700;
+}
+.auth-page p {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: var(--text-color-light);
+}
+
+/* --- 4. Form Chung (Input, Button) --- */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  background-color: #f9fafb;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-color-light);
+}
+
+/* Kiểu Button */
+button {
+  display: inline-block;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background-color: var(--primary-color);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease-in-out;
+}
+button:hover {
+  background-color: var(--primary-color-dark);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+/* Button phụ (ví dụ: Hủy) */
+.btn-secondary {
+  background-color: var(--card-bg-color);
+  color: var(--text-color-light);
+  border: 1px solid var(--border-color);
+}
+.btn-secondary:hover {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+/* Button nguy hiểm (ví dụ: Logout) */
+.btn-danger {
+  background-color: var(--error-color);
+}
+.btn-danger:hover {
+  background-color: #dc2626;
+}
+
+.error-message {
+  color: var(--error-color);
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+/* --- 5. Layout Chính (Navbar, Sidebar) --- */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.navbar {
+  height: var(--navbar-height);
+  width: 100%;
+  background-color: var(--card-bg-color);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.navbar-brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color-dark);
+}
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+.navbar-user span {
+  font-weight: 600;
+}
+.navbar-user button {
+  background-color: var(--error-color);
+}
+.navbar-user button:hover {
+  background-color: #dc2626;
+}
+
+.app-content {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+}
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--card-bg-color);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  flex-shrink: 0;
+  z-index: 5;
+}
+.sidebar ul {
+  list-style: none;
+}
+.sidebar li a {
+  display: block;
+  padding: 10px 15px;
+  color: var(--text-color-light);
+  font-weight: 500;
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s, color 0.2s;
+  border-left: 3px solid transparent;
+}
+.sidebar li a:hover {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color-dark);
+}
+.sidebar li a.active {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color-dark);
+  font-weight: 700;
+  border-left: 3px solid var(--primary-color);
+  padding-left: calc(15px - 3px);
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 2.5rem;
+  overflow-y: auto;
+}
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.page-container h2 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* --- 6. Bảng (Table) --- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5rem;
+  background-color: var(--card-bg-color);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+th,
+td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+thead th {
+  background-color: var(--bg-color);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-color-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+tbody tr:last-child td {
+  border-bottom: none;
+}
+.clickable-row:hover {
+  background-color: var(--primary-color-light);
+  cursor: pointer;
+}
+
+/* --- 7. Modal (Cửa sổ bật lên) --- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideIn {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+.modal-content {
+  background-color: var(--card-bg-color);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  width: 90%;
+  max-width: 700px;
+  animation: slideIn 0.3s ease-out;
+
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-content.large {
+  max-width: 1200px;
+}
+.modal-content h3 {
+  margin-bottom: 0.5rem;
+}
+.modal-content h4 {
+  margin-bottom: 1rem;
+  color: var(--text-color-light);
+  font-weight: 500;
+}
+.modal-body {
+  overflow-y: auto; /* Cho phép nội dung modal cuộn */
+  margin-top: 1.5rem;
+}
+.modal-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+.modal-actions button[onClick*="onClose"] {
+  background-color: var(--card-bg-color);
+  color: var(--text-color-light);
+  border: 1px solid var(--border-color);
+}
+.modal-actions button[onClick*="onClose"]:hover {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transform: none; /* Không cần hiệu ứng nảy */
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- 8. Kiểu riêng cho các Module --- */
+
+/* Module 1 & 2: Bảng Grid 7x2 */
+.availability-grid table,
+.schedule-grid table {
+  text-align: center;
+}
+.schedule-grid .schedule-cell {
+  cursor: pointer;
+  min-height: 100px;
+  vertical-align: top;
+  transition: all 0.2s ease;
+  padding: 8px;
+}
+.schedule-grid .schedule-cell:hover {
+  background-color: #fafbff;
+  box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+.schedule-cell ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+/* Hiển thị tên NV như "Tag" (thẻ) */
+.schedule-cell li {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color-dark);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.schedule-cell .employee-count {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--primary-color);
+}
+
+/* Module 1: Tìm kiếm NV (Modal) */
+.employee-search ul {
+  list-style: none;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  margin-top: 0.5rem;
+}
+.employee-search li {
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.employee-search li:hover {
+  background-color: var(--primary-color-light);
+}
+
+/* Module 2: Modal Chọn NV */
+.employee-list .employee-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: var(--border-radius);
+  transition: background-color 0.2s ease;
+}
+.employee-list .employee-item:hover {
+  background-color: var(--bg-color);
+}
+.employee-list .employee-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-right: 12px;
+}
+.employee-list .employee-item label strong {
+  color: var(--primary-color-dark);
+  margin-left: auto; /* Đẩy sang phải */
+}
+
+/* Module 3 & 4: Controls */
+.payroll-controls,
+.stats-controls,
+.week-selector {
+  padding: 1.5rem;
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-wrap: wrap; /* Cho phép xuống dòng trên di động */
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Trang Chấm công */
+.check-in-page {
+  max-width: 600px;
+}
+.check-in-page .check-in-form,
+.check-in-page .active-shift {
+  background-color: var(--card-bg-color);
+  padding: 2.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+}
+.check-in-page .active-shift {
+  border: 2px solid var(--success-color);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+.check-in-page .active-shift h2 {
+  color: var(--success-color);
+}
+.check-in-page .active-shift p {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+.checkin-button,
+.checkout-button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+}
+.checkout-button {
+  background-color: var(--error-color);
+}
+.checkout-button:hover {
+  background-color: #dc2626;
+}
