@@ -12,10 +12,8 @@ import java.util.Set;
 public class AvailabilityRequest {
     @NotNull
     private Integer employeeId;
-
     @NotNull
     @FutureOrPresent(message = "Không thể đăng ký cho tuần trong quá khứ")
     private LocalDate weekStartDate;
-
     private Set<AvailabilitySlotDto> slots;
 }

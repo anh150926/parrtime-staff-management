@@ -20,21 +20,16 @@ public class Schedule {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
-
     @Column(nullable = false)
     private LocalDate weekStartDate;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ScheduleStatus status;
-
     @Column(columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime publishedAt;
-
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ScheduleAssignment> assignments;
 

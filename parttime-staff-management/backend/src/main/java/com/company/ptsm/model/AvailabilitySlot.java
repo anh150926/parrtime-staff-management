@@ -16,15 +16,12 @@ public class AvailabilitySlot {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "availability_id", nullable = false)
     private WeeklyAvailability availability;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DayOfWeekEnum dayOfWeek;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ShiftType shiftType;

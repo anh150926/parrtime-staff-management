@@ -18,17 +18,13 @@ public class WeeklyAvailability {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
-
     @Column(nullable = false)
     private LocalDate weekStartDate;
-
     @Column(nullable = false)
     private String status;
-
     @OneToMany(mappedBy = "availability", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private Set<AvailabilitySlot> slots;
 }

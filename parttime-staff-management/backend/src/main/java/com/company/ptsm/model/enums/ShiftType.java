@@ -1,4 +1,3 @@
-// file: backend/src/main/java/com/company/ptsm/model/enums/ShiftType.java
 package com.company.ptsm.model.enums;
 
 import java.time.LocalTime;

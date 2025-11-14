@@ -16,18 +16,13 @@ public class Restaurant {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
     @Column(nullable = false)
     private String name;
-
     private String address;
-
     @Column(columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime createdAt;
-
     @OneToMany(mappedBy = "restaurant")
     private Set<Employee> employees;
-
     @OneToMany(mappedBy = "restaurant")
     private Set<Schedule> schedules;
 

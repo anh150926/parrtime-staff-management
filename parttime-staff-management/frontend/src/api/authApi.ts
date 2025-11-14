@@ -5,13 +5,18 @@
  */
 
 import axiosClient from "./axiosClient";
-import { AuthRequest, AuthResponse, RegisterRequest } from "../models/Auth";
+// [SỬA LỖI]: Cú pháp đúng là "import type { ... }"
+import type {
+  AuthRequest,
+  AuthResponse,
+  RegisterRequest,
+} from "../models/Auth";
 
 export const authApi = {
   login: (data: AuthRequest): Promise<AuthResponse> => {
     return axiosClient
       .post<AuthResponse>("/auth/login", data)
-      .then((response) => response.data);
+      .then((response) => response.data); // <-- Dòng 18 của bạn
   },
 
   register: (data: RegisterRequest): Promise<AuthResponse> => {

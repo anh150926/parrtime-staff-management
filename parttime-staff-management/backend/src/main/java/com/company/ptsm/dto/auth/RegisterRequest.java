@@ -15,10 +15,12 @@ public class RegisterRequest {
     private String phoneNumber;
 
     @Email(message = "Email không đúng định dạng")
+
     @NotEmpty(message = "Email không được để trống")
     private String email;
 
     @Size(min = 6, message = "Mật khẩu phải có ít nhất 6 ký tự")
+
     @NotEmpty(message = "Mật khẩu không được để trống")
     private String password;
 

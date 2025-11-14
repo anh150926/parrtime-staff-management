@@ -16,22 +16,17 @@ public class ScheduleAssignment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
     private Schedule schedule;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
-
     @Column(nullable = false)
     private LocalDate assignmentDate;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ShiftType shiftType;
-
     @OneToOne(mappedBy = "assignment")
     private WorkLog workLog;
 }

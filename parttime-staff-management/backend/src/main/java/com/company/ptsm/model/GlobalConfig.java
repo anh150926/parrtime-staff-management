@@ -14,12 +14,9 @@ public class GlobalConfig {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
     @Column(nullable = false, unique = true)
     private String configKey;
-
     @Column(nullable = false)
     private String configValue;
-
     private String description;
 }

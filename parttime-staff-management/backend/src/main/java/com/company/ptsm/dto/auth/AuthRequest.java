@@ -7,6 +7,7 @@ import lombok.Data;
 @Data
 public class AuthRequest {
     @Email(message = "Email không đúng định dạng")
+
     @NotEmpty(message = "Email không được để trống")
     private String email;
 
