@@ -1,6 +1,7 @@
 /*
  * file: frontend/src/components/layout/Sidebar.tsx
  *
+ * (Code đã sửa)
  * Thanh điều hướng bên trái (menu chính).
  */
 
@@ -11,18 +12,24 @@ import { Role } from "../../models/Enums";
 
 export const Sidebar: React.FC = () => {
   const { user } = useAuthStore();
+  // Kiểm tra xem user có phải là Manager không
   const isManager = user?.role === Role.MANAGER;
 
   return (
     <nav className="sidebar">
       <ul>
         <li>
-          <NavLink to="/">Trang chủ</NavLink>
+          {/* Link đến Trang chủ (Hồ sơ nhân viên) */}
+          {/* 'end' đảm bảo link này chỉ active khi ở chính xác trang chủ */}
+          <NavLink to="/" end>
+            Trang chủ (Hồ sơ)
+          </NavLink>
         </li>
         <li>
           <NavLink to="/availability">Đăng ký lịch</NavLink>
         </li>
 
+        {/* === Các Route chỉ dành cho MANAGER === */}
         {/* Chỉ Manager mới thấy các link này */}
         {isManager && (
           <>
