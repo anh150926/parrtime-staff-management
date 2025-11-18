@@ -7,7 +7,7 @@ import java.time.OffsetDateTime;
 
 @Data
 @AllArgsConstructor
-@NoArgsConstructor // <-- Sửa lỗi "required: no arguments"
+@NoArgsConstructor // Cần cho @RestControllerAdvice
 public class ErrorResponse {
     private int statusCode;
     private OffsetDateTime timestamp;

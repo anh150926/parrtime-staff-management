@@ -1,4 +1,9 @@
-// file: backend/src/main/java/com/company/ptsm/exception/ApiExceptionHandler.java
+/*
+ * file: backend/src/main/java/com/company/ptsm/exception/ApiExceptionHandler.java
+ *
+ * (CẢI TIẾN)
+ * Bắt lỗi toàn cục và format lại thành JSON (ErrorResponse).
+ */
 package com.company.ptsm.exception;
 
 import com.company.ptsm.dto.common.ErrorResponse;
@@ -16,6 +21,9 @@ import java.time.OffsetDateTime;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    /**
+     * Bắt lỗi NotFoundException (HTTP 404)
+     */
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException ex, WebRequest request) {
@@ -27,6 +35,9 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
+    /**
+     * Bắt lỗi BusinessRuleException (HTTP 400)
+     */
     @ExceptionHandler(BusinessRuleException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ErrorResponse> handleBusinessRuleException(BusinessRuleException ex, WebRequest request) {
@@ -38,10 +49,15 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+    /**
+     * Bắt lỗi Validation (HTTP 400)
+     * (Khi @Valid trong Controller thất bại, ví dụ: email sai định dạng)
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex,
             WebRequest request) {
+
         String errorMessage = "Dữ liệu không hợp lệ";
         if (ex.getBindingResult().hasErrors()) {
             FieldError fieldError = ex.getBindingResult().getFieldErrors().get(0);
@@ -56,9 +72,15 @@ public class ApiExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+    /**
+     * Bắt tất cả các lỗi 500 (Lỗi server chung chung)
+     */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, WebRequest request) {
+        // Log lỗi chi tiết ở đây (quan trọng cho debug)
+        ex.printStackTrace();
+
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 OffsetDateTime.now(),

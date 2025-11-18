@@ -1,10 +1,15 @@
+/*
+ * file: backend/src/main/java/com/company/ptsm/model/WorkLog.java
+ *
+ * [CẢI TIẾN]
+ * Bảng Chấm công (Timesheet).
+ * Đã thêm các trường để hỗ trợ "Hiệu chỉnh công" (VAI TRÒ 2, Mục 4).
+ */
 package com.company.ptsm.model;
 
-import com.company.ptsm.model.enums.ShiftType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -15,30 +20,43 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Builder
 public class WorkLog {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    // Nhân viên chấm công
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    // Thuộc cơ sở nào
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id", nullable = false)
+    private Branch branch;
+
+    @Column(nullable = false)
+    private OffsetDateTime checkIn;
+
+    private OffsetDateTime checkOut;
+
+    // --- [MỚI] Các trường dành cho "Hiệu chỉnh công" ---
+    @Column(nullable = false)
+    private boolean isEdited;
+
+    private String editReason; // Lý do sửa
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "edited_by_manager_id") // Manager nào đã sửa
+    private User editedByManager;
+    // --- Kết thúc ---
+
+    // (Các trường tính toán)
+    private BigDecimal actualHours; // Số giờ làm thực tế
+    private Integer lateMinutes; // Số phút đi muộn
+
+    // (Trường này dùng để liên kết với Ca làm)
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignment_id", unique = true)
-    private ScheduleAssignment assignment;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false)
-    private Employee employee;
-    @Column(columnDefinition = "TIMESTAMP WITH TIME ZONE")
-    private OffsetDateTime checkIn;
-    @Column(columnDefinition = "TIMESTAMP WITH TIME ZONE")
-    private OffsetDateTime checkOut;
-    @Column(nullable = false)
-    private LocalDate shiftDate;
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ShiftType shiftType;
-    @Column(precision = 5, scale = 2)
-    private BigDecimal actualHours;
-    @Column(precision = 5, scale = 2)
-    private BigDecimal baseHours;
-    @Column(precision = 5, scale = 2)
-    private BigDecimal overtimeHours;
-    private Integer lateMinutes;
-    private Integer earlyLeaveMinutes;
+    private ScheduleAssignment assignment; // (Có thể null nếu làm ngoài lịch)
 }

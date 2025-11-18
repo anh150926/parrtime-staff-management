@@ -1,3 +1,7 @@
+/*
+ * file: backend/src/main/java/com/company/ptsm/model/GlobalConfig.java
+ * (Giữ nguyên, dùng để lưu HOURLY_WAGE)
+ */
 package com.company.ptsm.model;
 
 import jakarta.persistence.*;
@@ -14,9 +18,12 @@ public class GlobalConfig {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
     @Column(nullable = false, unique = true)
-    private String configKey;
+    private String configKey; // "HOURLY_WAGE"
+
     @Column(nullable = false)
-    private String configValue;
+    private String configValue; // "25000"
+
     private String description;
 }

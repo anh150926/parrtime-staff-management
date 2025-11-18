@@ -1,14 +1,23 @@
+/*
+ * file: backend/src/main/java/com/company/ptsm/model/Payroll.java
+ *
+ * [CẢI TIẾN]
+ * Bảng Phiếu lương (VAI TRÒ 2, Mục 5).
+ * Đã nâng cấp để tính lương theo Tháng (thay vì Tuần).
+ * Hỗ trợ cả 2 loại lương (theo giờ cho Staff, cố định cho Manager).
+ */
 package com.company.ptsm.model;
 
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Entity
 @Table(name = "payrolls", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "employee_id", "week_start_date" })
+        // 1 nhân viên chỉ có 1 phiếu lương / tháng / năm
+        @UniqueConstraint(columnNames = { "user_id", "month", "year" })
 })
 @Getter
 @Setter
@@ -16,40 +25,55 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 @Builder
 public class Payroll {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id", nullable = false)
-    private Employee employee;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     @Column(nullable = false)
-    private LocalDate weekStartDate;
+    private int month; // (ví dụ: 11)
+
     @Column(nullable = false)
-    private LocalDate weekEndDate;
-    @Column(precision = 5, scale = 2)
-    private BigDecimal totalBaseHours;
-    @Column(precision = 5, scale = 2)
-    private BigDecimal totalOvertimeHours;
-    private Integer totalLateMinutes;
-    private Integer totalEarlyLeaveMinutes;
+    private int year; // (ví dụ: 2025)
+
+    // --- Dữ liệu tổng hợp ---
     @Column(precision = 10, scale = 2)
-    private BigDecimal basePay;
-    @Column(precision = 10, scale = 2)
-    private BigDecimal overtimePay;
-    @Column(precision = 10, scale = 2)
-    private BigDecimal penaltyAmount;
-    @Column(precision = 10, scale = 2)
-    private BigDecimal totalPay;
+    private BigDecimal totalWorkHours; // Tổng giờ làm (cho Staff)
+
+    private Integer totalLateMinutes; // Tổng phút đi muộn (cho Staff)
+
+    // --- Dữ liệu tiền ---
+    @Column(precision = 12, scale = 2)
+    private BigDecimal basePay; // Lương cơ bản (cho Manager) HOẶC Lương theo giờ (cho Staff)
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal totalBonus; // Tổng Thưởng
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal totalPenalty; // Tổng Phạt
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal finalPay; // Lương cuối cùng (base + bonus - penalty)
+
     @Column(nullable = false)
-    private String status;
+    private String status; // 'PENDING' (Chờ chốt), 'CALCULATED' (Đã chốt), 'PAID' (Đã trả)
+
     @Column(columnDefinition = "TIMESTAMP WITH TIME ZONE")
-    private OffsetDateTime calculatedAt;
+    private OffsetDateTime createdAt;
+
+    // Liên kết 1-N với các khoản Thưởng/Phạt
+    @OneToMany(mappedBy = "payroll")
+    private Set<PayrollAdjustment> adjustments;
 
     @PrePersist
     protected void onCreate() {
-        calculatedAt = OffsetDateTime.now();
+        createdAt = OffsetDateTime.now();
         if (status == null) {
-            status = "CALCULATED";
+            status = "PENDING";
         }
     }
 }

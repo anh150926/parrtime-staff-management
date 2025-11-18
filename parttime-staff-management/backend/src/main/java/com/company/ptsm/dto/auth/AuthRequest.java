@@ -1,3 +1,9 @@
+/*
+ * file: backend/src/main/java/com/company/ptsm/dto/auth/AuthRequest.java
+ *
+ * (CẢI TIẾN)
+ * DTO nhận email/password từ Frontend khi đăng nhập.
+ */
 package com.company.ptsm.dto.auth;
 
 import jakarta.validation.constraints.Email;
@@ -6,8 +12,8 @@ import lombok.Data;
 
 @Data
 public class AuthRequest {
-    @Email(message = "Email không đúng định dạng")
 
+    @Email(message = "Email không đúng định dạng")
     @NotEmpty(message = "Email không được để trống")
     private String email;
 

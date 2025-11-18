@@ -1,6 +1,7 @@
 /*
  * file: backend/src/main/java/com/company/ptsm/config/OpenApiConfig.java
  *
+ * (CẢI TIẾN)
  * Cấu hình Swagger/OpenAPI 3 để hỗ trợ JWT.
  */
 package com.company.ptsm.config;
@@ -16,29 +17,41 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-    @Bean
-    public OpenAPI customOpenAPI() {
-        final String securitySchemeName = "bearerAuth"; // Tên của lược đồ bảo mật
+        @Bean
+        public OpenAPI customOpenAPI() {
+                final String securitySchemeName = "bearerAuth"; // Tên của lược đồ bảo mật
 
-        return new OpenAPI()
-                // 1. Thêm thành phần bảo mật (Security Scheme)
-                .components(
-                        new Components()
-                                .addSecuritySchemes(securitySchemeName,
-                                        new SecurityScheme()
-                                                .type(SecurityScheme.Type.HTTP) // Kiểu HTTP
-                                                .scheme("bearer") // Lược đồ là "bearer"
-                                                .bearerFormat("JWT") // Định dạng là JWT
-                                                .in(SecurityScheme.In.HEADER) // Nằm trong Header
-                                                .name("Authorization") // Tên header là Authorization
-                                ))
-                // 2. Yêu cầu bảo mật toàn cục (bắt buộc nhập token)
-                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+                return new OpenAPI()
+                                // 1. Thêm thành phần bảo mật (Security Scheme)
+                                .components(
+                                                new Components()
+                                                                .addSecuritySchemes(securitySchemeName,
+                                                                                new SecurityScheme()
+                                                                                                .type(SecurityScheme.Type.HTTP) // Kiểu
+                                                                                                                                // HTTP
+                                                                                                .scheme("bearer") // Lược
+                                                                                                                  // đồ
+                                                                                                                  // là
+                                                                                                                  // "bearer"
+                                                                                                .bearerFormat("JWT") // Định
+                                                                                                                     // dạng
+                                                                                                                     // là
+                                                                                                                     // JWT
+                                                                                                .in(SecurityScheme.In.HEADER) // Nằm
+                                                                                                                              // trong
+                                                                                                                              // Header
+                                                                                                .name("Authorization") // Tên
+                                                                                                                       // header
+                                                                                                                       // là
+                                                                                                                       // Authorization
+                                                                ))
+                                // 2. Yêu cầu bảo mật toàn cục (bắt buộc nhập token)
+                                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
 
-                // 3. Thêm thông tin chung cho API
-                .info(new Info()
-                        .title("Part-Time Staff Management API")
-                        .version("v1.0.0")
-                        .description("API cho hệ thống quản lý nhân viên bán thời gian."));
-    }
+                                // 3. Thêm thông tin chung cho API
+                                .info(new Info()
+                                                .title("Coffee Shop Management API (Cải tiến)")
+                                                .version("v1.0.0")
+                                                .description("API cho hệ thống quản lý nhân viên quán cà phê 3 vai trò."));
+        }
 }

@@ -1,4 +1,10 @@
-// file: backend/src/main/java/com/company/ptsm/exception/NotFoundException.java
+/*
+ * file: backend/src/main/java/com/company/ptsm/exception/NotFoundException.java
+ *
+ * (CẢI TIẾN)
+ * Lỗi 404 - Not Found.
+ * Dùng khi không tìm thấy một tài nguyên (user, branch, schedule...).
+ */
 package com.company.ptsm.exception;
 
 import org.springframework.http.HttpStatus;

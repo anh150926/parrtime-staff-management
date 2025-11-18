@@ -1,4 +1,10 @@
-// file: backend/src/main/java/com/company/ptsm/exception/BusinessRuleException.java
+/*
+ * file: backend/src/main/java/com/company/ptsm/exception/BusinessRuleException.java
+ *
+ * (CẢI TIẾN)
+ * Lỗi 400 - Bad Request.
+ * Dùng khi người dùng vi phạm một quy tắc nghiệp vụ.
+ */
 package com.company.ptsm.exception;
 
 import org.springframework.http.HttpStatus;
