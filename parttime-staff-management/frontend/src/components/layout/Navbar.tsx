@@ -1,40 +1,61 @@
-/*
- * file: frontend/src/components/layout/Navbar.tsx
- *
- * (Code đã sửa)
- * Thanh menu phía trên (hiển thị tên user, nút logout).
- */
-
+/* file: frontend/src/components/layout/Navbar.tsx */
 import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
-import { useNavigate, Link } from "react-router-dom"; // Import Link
+import { Role } from "../../models/Enums";
 
 export const Navbar: React.FC = () => {
-  // Lấy "user" và "logout" từ store
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout(); // Xóa token khỏi state và localStorage
-    navigate("/login"); // Chuyển hướng về trang đăng nhập
+    logout();
+    navigate("/login");
   };
 
-  return (
-    <header className="navbar">
-      <div className="navbar-brand">Quản lý nhân viên</div>
-      <div className="navbar-user">
-        {user && (
-          <>
-            {/* Link đến Hồ sơ (Trang chủ) */}
-            <Link to="/">Xin chào, {user.name}</Link>
+  // Link logo trỏ về dashboard tương ứng
+  const homeLink =
+    user?.role === Role.SUPER_ADMIN
+      ? "/admin/dashboard"
+      : user?.role === Role.MANAGER
+      ? "/manager/dashboard"
+      : "/staff/dashboard";
 
-            {/* Nút Đăng xuất */}
-            <button onClick={handleLogout} className="btn-danger">
-              Đăng xuất
+  return (
+    <nav
+      className="navbar navbar-expand navbar-dark bg-primary fixed-top px-3 shadow-sm"
+      style={{ height: "60px", zIndex: 1030 }}
+    >
+      <Link
+        className="navbar-brand fw-bold d-flex align-items-center"
+        to={homeLink}
+      >
+        <i className="bi bi-cup-hot-fill me-2 fs-4"></i>
+        PTSM Coffee
+      </Link>
+
+      <div className="collapse navbar-collapse justify-content-end">
+        {user && (
+          <div className="d-flex align-items-center text-white">
+            <div className="me-3 text-end d-none d-md-block">
+              <div className="fw-bold">{user.fullName}</div>
+              <small className="text-white-50" style={{ fontSize: "0.75rem" }}>
+                {user.role === Role.SUPER_ADMIN
+                  ? "Chủ sở hữu"
+                  : user.role === Role.MANAGER
+                  ? "Quản lý"
+                  : "Nhân viên"}
+              </small>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="btn btn-outline-light btn-sm"
+            >
+              <i className="bi bi-box-arrow-right me-1"></i> Thoát
             </button>
-          </>
+          </div>
         )}
       </div>
-    </header>
+    </nav>
   );
 };

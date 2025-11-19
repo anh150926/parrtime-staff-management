@@ -1,33 +1,43 @@
-/*
- * file: frontend/src/models/Payroll.ts
- */
-import { ShiftType } from "./Enums";
+/* file: frontend/src/models/Payroll.ts */
+import { AdjustmentType } from "./Enums";
 
-export interface PayrollSummaryResponse {
-  payrollId: number;
-  employeeId: number;
+export interface PayrollAdjustmentDto {
+  id: number;
+  type: AdjustmentType; // BONUS, PENALTY
+  amount: number;
+  reason: string;
+  createdAt: string;
+  managerName: string;
+}
+
+export interface PayrollAdjustmentRequest {
+  userId: number;
+  type: AdjustmentType;
+  amount: number;
+  reason: string;
+}
+
+export interface PayrollCalculationRequest {
+  month: number;
+  year: number;
+}
+
+export interface PayrollDto {
+  id: number;
+  userId: number;
+  staffName: string;
   employeeCode: string;
-  employeeName: string;
-  phoneNumber: string;
-  totalBaseHours: number;
-  totalOvertimeHours: number;
-  totalLateAndEarlyMinutes: number;
+  month: number;
+  year: number;
+  status: string; // PENDING, CALCULATED, PAID
+
+  totalWorkHours: number;
+  totalLateMinutes: number;
+
   basePay: number;
-  overtimePay: number;
+  totalBonus: number;
   totalPenalty: number;
   finalPay: number;
-}
-export interface PayrollDetailResponse {
-  dayOfWeek: string;
-  shiftDate: string; // "YYYY-MM-DD"
-  shift: ShiftType;
-  checkIn: string; // ISO DateTime String
-  checkOut: string; // ISO DateTime String
-  baseHours: number;
-  overtimeHours: number;
-  lateAndEarlyMinutes: number;
-  basePay: number;
-  overtimePay: number;
-  penaltyAmount: number;
-  totalPayForShift: number;
+
+  adjustments: PayrollAdjustmentDto[];
 }

@@ -1,55 +1,67 @@
 /*
  * file: frontend/src/store/authStore.ts
+ *
+ * Quản lý trạng thái đăng nhập (User, Token, Role) toàn cục.
+ * Sử dụng Zustand + Persist (Tự động lưu vào LocalStorage của trình duyệt).
  */
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { AuthUser, AuthResponse } from "../models/Auth";
 
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { AuthResponse } from "../models/Auth";
+import { Role } from "../models/Enums";
+
+// Định nghĩa kiểu dữ liệu cho Store
 interface AuthState {
-  user: AuthUser | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  login: (data: AuthResponse) => void;
-  logout: () => void;
-  setUser: (user: AuthUser | null) => void;
+  // --- State (Dữ liệu) ---
+  token: string | null; // JWT Token dùng để gọi API
+  user: AuthResponse | null; // Thông tin user (id, email, role, fullName...)
+  isAuthenticated: boolean; // Cờ kiểm tra: Đã đăng nhập chưa?
+
+  // --- Actions (Hành động) ---
+  login: (data: AuthResponse) => void; // Hàm gọi khi đăng nhập thành công
+  logout: () => void; // Hàm gọi khi đăng xuất
+
+  // Hàm tiện ích để kiểm tra quyền (dùng trong các Component)
+  hasRole: (role: Role) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
-      user: null,
+    (set, get) => ({
+      // 1. Giá trị khởi tạo (Mặc định là chưa đăng nhập)
       token: null,
+      user: null,
       isAuthenticated: false,
 
+      // 2. Hành động Login: Lưu thông tin vào Store
       login: (data: AuthResponse) => {
-        const user: AuthUser = {
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          restaurantId: data.restaurantId,
-        };
         set({
-          user: user,
           token: data.token,
+          user: data,
           isAuthenticated: true,
         });
       },
 
+      // 3. Hành động Logout: Xóa sạch thông tin
       logout: () => {
         set({
-          user: null,
           token: null,
+          user: null,
           isAuthenticated: false,
         });
+        // Xóa sạch localStorage để đảm bảo an toàn tuyệt đối
+        localStorage.removeItem("auth-storage");
       },
 
-      setUser: (user: AuthUser | null) => {
-        set({ user });
+      // 4. Hàm kiểm tra Role (dùng cho ProtectedRoute và ẩn/hiện nút bấm)
+      hasRole: (role: Role) => {
+        const currentUser = get().user;
+        return currentUser?.role === role;
       },
     }),
     {
-      name: "auth-storage", // Tên key trong localStorage
+      name: "auth-storage", // Tên key sẽ lưu trong LocalStorage (F12 -> Application -> Local Storage để xem)
+      storage: createJSONStorage(() => localStorage), // Cấu hình lưu trữ
     }
   )
 );

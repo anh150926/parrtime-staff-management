@@ -1,31 +1,31 @@
-/*
- * file: frontend/src/models/Enums.ts
- *
- * Các Enums từ Backend.
- */
+/* file: frontend/src/models/Enums.ts */
 
 export enum Role {
-  EMPLOYEE = "ROLE_EMPLOYEE",
+  SUPER_ADMIN = "ROLE_SUPER_ADMIN",
   MANAGER = "ROLE_MANAGER",
-  ADMIN = "ROLE_ADMIN",
+  STAFF = "ROLE_STAFF",
 }
 
+export enum EmployeeStatus {
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+}
+
+export enum RequestStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum AdjustmentType {
+  BONUS = "BONUS",
+  PENALTY = "PENALTY",
+}
+
+// (Tùy chọn: Nếu bạn muốn dùng Enum cho loại ca thay vì string)
 export enum ShiftType {
-  CA_1 = "CA_1", // 8h-16h
-  CA_2 = "CA_2", // 16h-00h
-}
-
-export enum DayOfWeekEnum {
-  MONDAY = "MONDAY",
-  TUESDAY = "TUESDAY",
-  WEDNESDAY = "WEDNESDAY",
-  THURSDAY = "THURSDAY",
-  FRIFAY = "FRIDAY",
-  SATURDAY = "SATURDAY",
-  SUNDAY = "SUNDAY",
-}
-
-export enum ScheduleStatus {
-  DRAFT = "DRAFT",
-  PUBLISHED = "PUBLISHED",
+  MORNING = "CA_SANG",
+  AFTERNOON = "CA_CHIEU",
+  NIGHT = "CA_TOI",
 }

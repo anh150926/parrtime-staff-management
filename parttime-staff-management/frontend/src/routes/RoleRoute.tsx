@@ -1,29 +1,22 @@
-/*
- * file: frontend/src/routes/RoleRoute.tsx
- *
- * (File mới)
- * Component này kiểm tra "Vai trò" (role) của người dùng.
- */
-
+/* file: frontend/src/routes/RoleRoute.tsx */
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { Role } from "../models/Enums";
 
-interface RoleRouteProps {
-  children: React.ReactElement;
-  role: Role; // Vai trò bắt buộc để truy cập
+interface Props {
+  requiredRole: Role; // Vai trò bắt buộc để vào route này
 }
 
-export const RoleRoute: React.FC<RoleRouteProps> = ({ children, role }) => {
+export const RoleRoute: React.FC<Props> = ({ requiredRole }) => {
   const { user } = useAuthStore();
 
-  // Nếu vai trò của user không khớp với vai trò yêu cầu
-  if (!user || user.role !== role) {
-    // Chuyển hướng về trang chủ
-    return <Navigate to="/" replace />;
+  // Nếu không có user (lỗi lạ) hoặc Role không khớp -> Đá về trang 403 (Access Denied)
+  // (Lưu ý: Bạn cần tạo trang AccessDeniedPage trong shared/)
+  if (!user || user.role !== requiredRole) {
+    return <Navigate to="/access-denied" replace />;
   }
 
-  // Nếu vai trò khớp, hiển thị trang con (ví dụ: <SchedulingPage />)
-  return children;
+  // Nếu đúng Role -> Cho phép hiển thị trang
+  return <Outlet />;
 };

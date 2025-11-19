@@ -1,43 +1,32 @@
-/*
- * file: frontend/src/api/axiosClient.ts
- *
- * Cấu hình Axios instance trung tâm.
- */
-
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 
-// Địa chỉ API backend của bạn
-const API_BASE_URL = "http://localhost:8080/api";
-
 const axiosClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: "http://localhost:8080/api", // URL của Backend Spring Boot
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Interceptor: Tự động đính kèm token vào mọi request
+// Interceptor: Tự động thêm Token vào header Authorization
 axiosClient.interceptors.request.use(
   (config) => {
+    // Lấy token từ Zustand store
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Interceptor: Tự động logout nếu gặp lỗi 401 (Token hết hạn)
+// Interceptor: Xử lý lỗi chung (ví dụ: Token hết hạn -> Tự động Logout)
 axiosClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      // Token không hợp lệ hoặc hết hạn -> Xóa store và chuyển về login
       useAuthStore.getState().logout();
       window.location.href = "/login";
     }

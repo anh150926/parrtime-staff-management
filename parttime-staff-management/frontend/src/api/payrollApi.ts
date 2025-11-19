@@ -1,51 +1,50 @@
-/*
- * file: frontend/src/api/payrollApi.ts
- *
- * File service cho API Module 3 (Tính lương).
- */
-
 import axiosClient from "./axiosClient";
 import {
-  PayrollDetailResponse,
-  PayrollSummaryResponse,
+  PayrollAdjustmentDto,
+  PayrollAdjustmentRequest,
+  PayrollCalculationRequest,
+  PayrollDto,
 } from "../models/Payroll";
 
-interface PayrollRangeRequest {
-  startDate: string;
-  endDate: string;
-}
-
 export const payrollApi = {
-  calculatePayroll: (
-    startDate: string,
-    endDate: string
-  ): Promise<PayrollSummaryResponse[]> => {
-    const data: PayrollRangeRequest = { startDate, endDate };
-    return axiosClient
-      .post<PayrollSummaryResponse[]>("/payroll/calculate", data)
-      .then((response) => response.data);
+  // Manager: Tính lương (hoặc tính lại)
+  calculatePayroll: async (
+    data: PayrollCalculationRequest
+  ): Promise<PayrollDto[]> => {
+    const response = await axiosClient.post<PayrollDto[]>(
+      "/payroll/calculate",
+      data
+    );
+    return response.data;
   },
 
-  getPayrollSummary: (
-    startDate: string,
-    endDate: string
-  ): Promise<PayrollSummaryResponse[]> => {
-    return axiosClient
-      .get<PayrollSummaryResponse[]>("/payroll/summary", {
-        params: { startDate, endDate },
-      })
-      .then((response) => response.data);
+  // Manager: Xem bảng lương cơ sở theo tháng
+  getBranchPayroll: async (
+    month: number,
+    year: number
+  ): Promise<PayrollDto[]> => {
+    const response = await axiosClient.get<PayrollDto[]>(
+      `/payroll/branch?month=${month}&year=${year}`
+    );
+    return response.data;
   },
 
-  getPayrollDetail: (
-    employeeId: number,
-    startDate: string,
-    endDate: string
-  ): Promise<PayrollDetailResponse[]> => {
-    return axiosClient
-      .get<PayrollDetailResponse[]>(`/payroll/detail/${employeeId}`, {
-        params: { startDate, endDate },
-      })
-      .then((response) => response.data);
+  // Staff: Xem lương của tôi
+  getMyPayroll: async (month: number, year: number): Promise<PayrollDto> => {
+    const response = await axiosClient.get<PayrollDto>(
+      `/payroll/my-payroll?month=${month}&year=${year}`
+    );
+    return response.data;
+  },
+
+  // Manager: Tạo Thưởng/Phạt thủ công
+  createAdjustment: async (
+    data: PayrollAdjustmentRequest
+  ): Promise<PayrollAdjustmentDto> => {
+    const response = await axiosClient.post<PayrollAdjustmentDto>(
+      "/payroll/adjustments",
+      data
+    );
+    return response.data;
   },
 };

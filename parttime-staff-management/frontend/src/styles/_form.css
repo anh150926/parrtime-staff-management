@@ -1,0 +1,74 @@
+/* --- Form Inputs --- */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.form-control,
+.form-select {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: #fcfcfd;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.form-control:hover {
+  border-color: #cbd5e1;
+}
+
+.form-control:focus {
+  background-color: white;
+  border-color: var(--primary-brand);
+  box-shadow: var(--shadow-glow-primary); /* Glow effect */
+  outline: none;
+}
+
+/* --- Buttons (Gradient & Shadow) --- */
+.btn {
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: all var(--transition-normal);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Nút Primary đẹp hơn */
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--primary-brand) 0%,
+    var(--primary-dark) 100%
+  );
+  color: white;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+}

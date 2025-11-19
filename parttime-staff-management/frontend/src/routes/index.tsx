@@ -1,81 +1,131 @@
-/*
- * file: frontend/src/routes/index.tsx
- *
- * (Phiên bản ĐẦY ĐỦ và CHÍNH XÁC, đã sửa lỗi lồng ghép)
- */
-
+/* file: frontend/src/routes/index.tsx */
 import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { ProtectedRoute } from "./ProtectedRoute"; // Import file bảo vệ
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from "react-router-dom";
+import { ProtectedRoute } from "./ProtectedRoute";
+import { RoleRoute } from "./RoleRoute";
 import { Role } from "../models/Enums";
-
-// Layouts
 import { MainLayout } from "../components/layout/MainLayout";
+import { useAuthStore } from "../store/authStore";
 
-// Public Pages
-import { LoginPage } from "../pages/LoginPage";
-import { RegisterPage } from "../pages/RegisterPage";
+// --- IMPORT CÁC TRANG (PAGES) ---
 
-// Protected Pages (Import tất cả các trang)
-import { HomePage } from "../pages/HomePage";
-import { RegisterNextWeekPage } from "../pages/RegisterNextWeekPage";
-import { SchedulingPage } from "../pages/SchedulingPage";
-import { WeeklyPayrollPage } from "../pages/WeeklyPayrollPage";
-import { BestEmployeesPage } from "../pages/BestEmployeesPage";
-import { CheckInOutPage } from "../pages/CheckInOutPage";
+// Public & Shared
+import { LoginPage } from "../pages/public/LoginPage";
+import { NotFoundPage } from "../pages/shared/NotFoundPage";
+import { AccessDeniedPage } from "../pages/shared/AccessDeniedPage";
+
+// Admin Pages
+import { AdminDashboard } from "../pages/admin/AdminDashboard";
+import { BranchManagementPage } from "../pages/admin/BranchManagementPage";
+import { ManagerAccountsPage } from "../pages/admin/ManagerAccountsPage";
+
+// Manager Pages
+import { ManagerDashboard } from "../pages/manager/ManagerDashboard";
+import { StaffListPage } from "../pages/manager/StaffListPage";
+import { StaffProfilePage } from "../pages/manager/StaffProfilePage";
+import { SchedulePage } from "../pages/manager/SchedulePage";
+import { RequestsPage } from "../pages/manager/RequestsPage";
+import { TimesheetPage } from "../pages/manager/TimesheetPage";
+import { PayrollPage } from "../pages/manager/PayrollPage";
+import { OperationsPage } from "../pages/manager/OperationsPage";
+import { CommunicationPage } from "../pages/manager/CommunicationPage";
+import { AuditLogPage } from "../pages/manager/AuditLogPage";
+
+// Staff Pages
+import { StaffDashboard } from "../pages/staff/StaffDashboard";
+import { MySchedulePage } from "../pages/staff/MySchedulePage";
+import { MyTasksPage } from "../pages/staff/MyTasksPage";
+import { MyPayrollPage } from "../pages/staff/MyPayrollPage";
+import { MyProfilePage } from "../pages/staff/MyProfilePage";
+import { FeedbackPage } from "../pages/staff/FeedbackPage";
+import { CheckInOutPage } from "../pages/staff/CheckInOutPage";
+
+// --- COMPONENT ĐIỀU HƯỚNG THÔNG MINH ---
+// (Khi vào trang chủ "/", tự động chuyển hướng đến Dashboard đúng theo vai trò)
+const RedirectToRoleDashboard = () => {
+  const { user } = useAuthStore();
+  if (user?.role === Role.SUPER_ADMIN)
+    return <Navigate to="/admin/dashboard" replace />;
+  if (user?.role === Role.MANAGER)
+    return <Navigate to="/manager/dashboard" replace />;
+  if (user?.role === Role.STAFF)
+    return <Navigate to="/staff/dashboard" replace />;
+  return <Navigate to="/login" replace />;
+};
 
 const router = createBrowserRouter([
+  // 1. Các Route Công khai (Không cần đăng nhập)
   {
-    // === Các Route Công khai (Public) ===
     path: "/login",
     element: <LoginPage />,
   },
   {
-    path: "/register",
-    element: <RegisterPage />,
+    path: "/access-denied",
+    element: <AccessDeniedPage />,
   },
   {
-    // === Các Route Yêu cầu Đăng nhập (Protected) ===
-    // Bước 1: Yêu cầu đăng nhập
+    path: "*", // Bắt tất cả các link sai (404)
+    element: <NotFoundPage />,
+  },
+
+  // 2. Các Route Đã Đăng nhập (Bảo vệ cấp 1)
+  {
     path: "/",
-    element: <ProtectedRoute />, // Kiểm tra login. Nếu OK, render <Outlet />
+    element: <ProtectedRoute />,
     children: [
       {
-        // Bước 2: Hiển thị Khung sườn (Layout)
-        element: <MainLayout />, // MainLayout được render vào <Outlet /> của ProtectedRoute
-        // MainLayout CÓ <Outlet/> RIÊNG của nó
+        // Áp dụng MainLayout (Sidebar + Navbar Bootstrap) cho tất cả các trang bên trong
+        element: <MainLayout />,
         children: [
-          // Bước 3: Hiển thị Trang con (Page)
-          // Các trang này được render vào <Outlet/> của MainLayout
+          // Trang chủ mặc định: Tự động chuyển hướng
+          { index: true, element: <RedirectToRoleDashboard /> },
+
+          // --- KHU VỰC SUPER ADMIN (Bảo vệ cấp 2: Chỉ SUPER_ADMIN) ---
           {
-            path: "", // Trang chủ: / (Hồ sơ nhân viên)
-            element: <HomePage />,
-          },
-          {
-            path: "availability", // /availability (Module 1)
-            element: <RegisterNextWeekPage />,
-          },
-          {
-            path: "check-in", // /check-in (Chấm công)
-            element: <CheckInOutPage />,
+            path: "admin",
+            element: <RoleRoute requiredRole={Role.SUPER_ADMIN} />,
+            children: [
+              { path: "dashboard", element: <AdminDashboard /> },
+              { path: "branches", element: <BranchManagementPage /> },
+              { path: "managers", element: <ManagerAccountsPage /> },
+            ],
           },
 
-          // === Các Route chỉ dành cho MANAGER (Lồng thêm 1 lớp bảo vệ) ===
+          // --- KHU VỰC MANAGER (Bảo vệ cấp 2: Chỉ MANAGER) ---
           {
-            element: <ProtectedRoute role={Role.MANAGER} />, // Bước 2.5: Kiểm tra Role
+            path: "manager",
+            element: <RoleRoute requiredRole={Role.MANAGER} />,
             children: [
-              {
-                path: "scheduling", // /scheduling
-                element: <SchedulingPage />,
-              },
-              {
-                path: "payroll", // /payroll
-                element: <WeeklyPayrollPage />,
-              },
-              {
-                path: "stats", // /stats
-                element: <BestEmployeesPage />,
-              },
+              { path: "dashboard", element: <ManagerDashboard /> },
+              { path: "staff", element: <StaffListPage /> },
+              { path: "staff/:id", element: <StaffProfilePage /> }, // Xem chi tiết NV
+              { path: "schedule", element: <SchedulePage /> },
+              { path: "requests", element: <RequestsPage /> },
+              { path: "timesheet", element: <TimesheetPage /> },
+              { path: "payroll", element: <PayrollPage /> },
+              { path: "operations", element: <OperationsPage /> },
+              { path: "communication", element: <CommunicationPage /> },
+              { path: "audit", element: <AuditLogPage /> },
+            ],
+          },
+
+          // --- KHU VỰC STAFF (Bảo vệ cấp 2: Chỉ STAFF) ---
+          {
+            path: "staff",
+            element: <RoleRoute requiredRole={Role.STAFF} />,
+            children: [
+              { path: "dashboard", element: <StaffDashboard /> },
+              { path: "schedule", element: <MySchedulePage /> },
+              { path: "tasks", element: <MyTasksPage /> },
+              { path: "payroll", element: <MyPayrollPage /> },
+              { path: "timesheet", element: <MyTasksPage /> }, // (Tạm dùng chung hoặc tạo trang riêng)
+              { path: "profile", element: <MyProfilePage /> },
+              { path: "feedback", element: <FeedbackPage /> },
+              { path: "check-in", element: <CheckInOutPage /> },
             ],
           },
         ],
@@ -84,7 +134,6 @@ const router = createBrowserRouter([
   },
 ]);
 
-// Component AppRouter để dùng trong App.tsx
 export const AppRouter: React.FC = () => {
   return <RouterProvider router={router} />;
 };

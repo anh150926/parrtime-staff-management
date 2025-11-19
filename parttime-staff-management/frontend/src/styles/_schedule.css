@@ -1,0 +1,80 @@
+/* --- Calendar Grid --- */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(200px, 1fr)
+  ); /* Responsive tự động */
+  gap: 16px;
+}
+
+.calendar-day-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.calendar-day-card:hover {
+  border-color: var(--primary-brand);
+  box-shadow: var(--shadow-md);
+}
+
+/* Header ngày */
+.calendar-date-header {
+  background: var(--bg-body);
+  padding: 8px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.calendar-day-card.today .calendar-date-header {
+  background: var(--primary-brand);
+  color: white;
+}
+
+/* Nội dung ca làm */
+.shift-content {
+  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shift-badge {
+  background: var(--primary-light);
+  color: var(--primary-brand);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+/* Staff List trong lịch */
+.staff-avatar-group {
+  display: flex;
+  padding-left: 8px;
+}
+.staff-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ccc;
+  border: 2px solid white;
+  margin-left: -8px;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
