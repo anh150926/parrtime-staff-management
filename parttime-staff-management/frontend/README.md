@@ -1,75 +1,123 @@
-# React + TypeScript + Vite
+# Coffee House - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript frontend cho hệ thống quản lý nhân viên bán thời gian.
 
-Currently, two official plugins are available:
+## Công nghệ
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 18
+- TypeScript
+- Redux Toolkit
+- React Router DOM v6
+- Axios
+- Bootstrap 5 (CSS thuần)
+- Bootstrap Icons
 
-## React Compiler
+## Cài đặt
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+### 1. Yêu cầu
+- Node.js 18+
+- npm hoặc yarn
 
-Note: This will impact Vite dev & build performances.
+### 2. Cài dependencies
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 3. Cấu hình API URL
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Tạo file `.env`:
 ```
+REACT_APP_API_URL=http://localhost:8080/api/v1
+```
+
+### 4. Chạy development server
+
+```bash
+npm start
+```
+
+App chạy tại: http://localhost:3000
+
+### 5. Build production
+
+```bash
+npm run build
+```
+
+Output trong thư mục `build/`
+
+## Cấu trúc project
+
+```
+src/
+├── api/              # API services (axios)
+├── app/              # Redux store configuration
+├── components/       # Reusable UI components
+│   ├── Layout.tsx
+│   ├── Loading.tsx
+│   ├── Toast.tsx
+│   └── ConfirmModal.tsx
+├── features/         # Redux slices
+│   ├── auth/
+│   ├── users/
+│   ├── stores/
+│   ├── shifts/
+│   ├── requests/
+│   ├── payroll/
+│   └── notifications/
+├── pages/            # Page components
+│   ├── Login.tsx
+│   ├── Dashboard.tsx
+│   ├── Users.tsx
+│   ├── Stores.tsx
+│   ├── Shifts.tsx
+│   ├── MyShifts.tsx
+│   ├── Requests.tsx
+│   ├── Payrolls.tsx
+│   ├── Reports.tsx
+│   └── Profile.tsx
+├── routes/           # Route guards
+├── utils/            # Helper functions
+├── App.tsx
+├── index.tsx
+└── index.css         # Custom styles
+```
+
+## Tài khoản demo
+
+| Vai trò | Username | Password |
+|---------|----------|----------|
+| Owner | owner | password123 |
+| Manager | managerA | password123 |
+| Staff | staff1 | password123 |
+
+## Tính năng theo vai trò
+
+### Owner
+- Dashboard tổng quan hệ thống
+- Quản lý tất cả cơ sở
+- Quản lý tất cả nhân viên
+- Xem báo cáo toàn hệ thống
+- Duyệt bảng lương
+
+### Manager
+- Dashboard cơ sở được giao
+- Quản lý nhân viên tại cơ sở
+- Tạo và phân ca làm việc
+- Duyệt yêu cầu nghỉ/đổi ca
+- Chấm công thủ công
+
+### Staff
+- Xem ca làm được phân công
+- Check-in/Check-out
+- Gửi yêu cầu nghỉ/đổi ca
+- Xem lịch sử công và lương
+
+
+
+
+
+
+
+

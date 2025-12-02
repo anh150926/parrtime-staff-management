@@ -1,0 +1,686 @@
+{
+  "info": {
+    "name": "Coffee House Staff Management API",
+    "description": "API collection for Coffee Shop Part-time Staff Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"owner\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"your-refresh-token\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newstaff\",\n  \"password\": \"password123\",\n  \"fullName\": \"New Staff Member\",\n  \"email\": \"newstaff@coffee.vn\",\n  \"phone\": \"0901234567\",\n  \"role\": \"STAFF\",\n  \"storeId\": 1,\n  \"hourlyRate\": 35000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Updated Name\",\n  \"phone\": \"0909876543\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/5",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "5"]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/12",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "12"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stores",
+      "item": [
+        {
+          "name": "Get All Stores",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stores",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores"]
+            }
+          }
+        },
+        {
+          "name": "Get Store by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stores/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Store",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Store D - Ba Đình\",\n  \"address\": \"50 Kim Mã, Ba Đình, Hà Nội\",\n  \"openingTime\": \"07:00\",\n  \"closingTime\": \"22:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shifts",
+      "item": [
+        {
+          "name": "Get Shifts by Store",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stores/1/shifts",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores", "1", "shifts"]
+            }
+          }
+        },
+        {
+          "name": "Get My Shifts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/my-shifts",
+              "host": ["{{baseUrl}}"],
+              "path": ["my-shifts"]
+            }
+          }
+        },
+        {
+          "name": "Create Shift",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Ca sáng\",\n  \"startDatetime\": \"2025-12-01T07:00:00\",\n  \"endDatetime\": \"2025-12-01T13:00:00\",\n  \"requiredSlots\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stores/1/shifts",
+              "host": ["{{baseUrl}}"],
+              "path": ["stores", "1", "shifts"]
+            }
+          }
+        },
+        {
+          "name": "Assign Staff to Shift",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [5, 6]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shifts/1/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["shifts", "1", "assign"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Time Tracking",
+      "item": [
+        {
+          "name": "Check In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shiftId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/time/checkin",
+              "host": ["{{baseUrl}}"],
+              "path": ["time", "checkin"]
+            }
+          }
+        },
+        {
+          "name": "Check Out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/time/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["time", "checkout"]
+            }
+          }
+        },
+        {
+          "name": "Get Current Check-in",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/time/current",
+              "host": ["{{baseUrl}}"],
+              "path": ["time", "current"]
+            }
+          }
+        },
+        {
+          "name": "Get Time Logs by User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/time/user/5",
+              "host": ["{{baseUrl}}"],
+              "path": ["time", "user", "5"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests",
+      "item": [
+        {
+          "name": "Get All Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests"]
+            }
+          }
+        },
+        {
+          "name": "Create Leave Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"LEAVE\",\n  \"startDatetime\": \"2025-12-05T07:00:00\",\n  \"endDatetime\": \"2025-12-05T13:00:00\",\n  \"reason\": \"Việc gia đình\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests"]
+            }
+          }
+        },
+        {
+          "name": "Review Request",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\",\n  \"note\": \"Đã duyệt\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/requests/1/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["requests", "1", "review"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payrolls",
+      "item": [
+        {
+          "name": "Generate Payroll",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payrolls/generate?month=2025-11",
+              "host": ["{{baseUrl}}"],
+              "path": ["payrolls", "generate"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2025-11"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Payrolls by Month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payrolls?month=2025-11",
+              "host": ["{{baseUrl}}"],
+              "path": ["payrolls"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2025-11"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve Payroll",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payrolls/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["payrolls", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Get System Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/system?month=2025-11",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "system"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2025-11"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Store Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/store/1?month=2025-11",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "store", "1"],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2025-11"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "unread-count"]
+            }
+          }
+        },
+        {
+          "name": "Mark All as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "read-all"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+
+
+
+
+
+
+

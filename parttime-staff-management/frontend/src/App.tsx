@@ -1,31 +1,60 @@
-/*
- * file: frontend/src/App.tsx
- *
- * Component gốc của ứng dụng.
- * Chịu trách nhiệm import các file CSS tùy chỉnh và hiển thị Router.
- */
-import React from "react";
-import { AppRouter } from "./routes";
-
-// --- Import Custom Styles (Theo thứ tự) ---
-// 1. Base (Biến, Reset)
-import "./styles/_base.css";
-
-// 2. Layout (Khung sườn)
-import "./styles/_layout.css";
-
-// 3. Components (Form, Table, Modal)
-import "./styles/_form.css";
-import "./styles/_table.css";
-import "./styles/_modal.css";
-
-// 4. Pages (Dashboard, Auth, Schedule)
-import "./styles/_auth.css";
-import "./styles/_dashboard.css";
-import "./styles/_schedule.css";
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from './app/store';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Users from './pages/Users';
+import Stores from './pages/Stores';
+import Shifts from './pages/Shifts';
+import MyShifts from './pages/MyShifts';
+import Requests from './pages/Requests';
+import Payrolls from './pages/Payrolls';
+import Reports from './pages/Reports';
+import Profile from './pages/Profile';
+import Marketplace from './pages/Marketplace';
+import Tasks from './pages/Tasks';
+import Notifications from './pages/Notifications';
+import Complaints from './pages/Complaints';
+import EmployeeRanking from './pages/EmployeeRanking';
+import ProtectedRoute from './routes/ProtectedRoute';
 
 const App: React.FC = () => {
-  return <AppRouter />;
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+
+  return (
+    <Routes>
+      <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
+      
+      <Route element={<ProtectedRoute />}>
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/stores" element={<Stores />} />
+          <Route path="/shifts" element={<Shifts />} />
+          <Route path="/my-shifts" element={<MyShifts />} />
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/requests" element={<Requests />} />
+          <Route path="/payrolls" element={<Payrolls />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/complaints" element={<Complaints />} />
+          <Route path="/rankings" element={<EmployeeRanking />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
+      </Route>
+
+      <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
 };
 
 export default App;
+
+
+
+
+

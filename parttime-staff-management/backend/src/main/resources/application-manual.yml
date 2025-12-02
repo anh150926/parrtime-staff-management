@@ -1,0 +1,36 @@
+# =====================================================
+# Profile cho người dùng MANUAL SQL SETUP
+# Sử dụng khi đã chạy database/full_setup.sql trong VS Code
+# =====================================================
+# Cách chạy backend với profile này:
+#   mvn spring-boot:run -Dspring-boot.run.profiles=manual
+# Hoặc trong VS Code:
+#   Set môi trường SPRING_PROFILES_ACTIVE=manual
+# =====================================================
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/coffee_management?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+    username: root
+    password: ""  # Rỗng cho XAMPP/Laragon
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Chỉ validate vì bảng đã được tạo
+    show-sql: false
+
+  flyway:
+    enabled: false  # Tắt vì đã tạo bảng thủ công
+
+logging:
+  level:
+    com.coffee.management: INFO
+    org.springframework.security: WARN
+
+
+
+
+
+
+
+

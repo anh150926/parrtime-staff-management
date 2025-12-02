@@ -1,255 +1,205 @@
-/*
- * SCHEMA V2 - ULTIMATE FIX
- * Chuyển đổi JSON/ENUM -> TEXT/VARCHAR để tương thích 100% với Hibernate
- */
+-- =====================================================
+-- Coffee House Staff Management System - Database Schema
+-- Database: MySQL 8.x
+-- =====================================================
 
-SET FOREIGN_KEY_CHECKS=0;
+-- Tạo database nếu chưa tồn tại
+CREATE DATABASE IF NOT EXISTS coffee_management 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
 
--- 1. Xóa sạch sẽ
-DROP TABLE IF EXISTS audit_logs, task_logs, task_checklists, knowledge_articles, poll_votes, polls, complaints, announcements, payroll_adjustments, payrolls, work_logs, shift_market, leave_requests, staff_availabilities, schedule_assignments, schedules, shift_templates, contracts, staff_profiles, users, positions, branches, global_configs, weekly_availabilities, availability_slots, payroll_rules, employees, restaurants;
+USE coffee_management;
 
-SET FOREIGN_KEY_CHECKS=1;
+-- =====================================================
+-- Drop tables nếu tồn tại (theo thứ tự dependency)
+-- =====================================================
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS payrolls;
+DROP TABLE IF EXISTS requests;
+DROP TABLE IF EXISTS time_logs;
+DROP TABLE IF EXISTS shift_assignments;
+DROP TABLE IF EXISTS shifts;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS stores;
+SET FOREIGN_KEY_CHECKS = 1;
 
--- 2. Tạo lại bảng (Phiên bản an toàn)
-
-CREATE TABLE branches (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    address TEXT,
+-- =====================================================
+-- Bảng stores - Các cơ sở cà phê
+-- =====================================================
+CREATE TABLE stores (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL COMMENT 'Tên cơ sở',
+    address VARCHAR(255) NOT NULL COMMENT 'Địa chỉ',
+    opening_time TIME COMMENT 'Giờ mở cửa',
+    closing_time TIME COMMENT 'Giờ đóng cửa',
+    manager_user_id BIGINT NULL COMMENT 'ID quản lý cơ sở',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE positions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    branch_id INT,
-    position_code VARCHAR(10) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
-);
-
-CREATE TABLE shift_templates (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    branch_id INT,
-    name VARCHAR(100) NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
-);
-
-CREATE TABLE global_configs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    config_key VARCHAR(100) UNIQUE NOT NULL,
-    config_value VARCHAR(255) NOT NULL,
-    description TEXT
-);
-
+-- =====================================================
+-- Bảng users - Người dùng (Owner, Manager, Staff)
+-- =====================================================
 CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    `role` VARCHAR(50) NOT NULL, -- Dùng VARCHAR cho an toàn
-    branch_id INT,
-    position_id INT,
-    `status` VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE COMMENT 'Tên đăng nhập',
+    password_hash VARCHAR(255) NOT NULL COMMENT 'Mật khẩu đã mã hóa BCrypt',
+    full_name VARCHAR(150) NOT NULL COMMENT 'Họ và tên',
+    email VARCHAR(150) NOT NULL UNIQUE COMMENT 'Email',
+    phone VARCHAR(20) COMMENT 'Số điện thoại',
+    role ENUM('OWNER', 'MANAGER', 'STAFF') NOT NULL COMMENT 'Vai trò',
+    store_id BIGINT COMMENT 'ID cơ sở làm việc',
+    hourly_rate DECIMAL(10, 2) COMMENT 'Lương theo giờ (VNĐ)',
+    status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE' COMMENT 'Trạng thái',
+    avatar_url VARCHAR(500) COMMENT 'URL ảnh đại diện',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
-    FOREIGN KEY (position_id) REFERENCES positions(id) ON DELETE SET NULL
-);
-
-CREATE TABLE staff_profiles (
-    user_id INT PRIMARY KEY,
-    employee_code VARCHAR(20) UNIQUE,
-    full_name VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(20) UNIQUE NOT NULL,
-    base_salary DECIMAL(12, 2) DEFAULT 0,
-    cccd VARCHAR(20) UNIQUE,
-    date_of_birth DATE,
-    address TEXT,
-    education VARCHAR(255),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    CONSTRAINT fk_users_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE contracts (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE,
-    contract_type VARCHAR(100),
-    file_url TEXT,
-    health_doc_expiry DATE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- Thêm foreign key cho store manager sau khi tạo bảng users
+ALTER TABLE stores 
+ADD CONSTRAINT fk_stores_manager 
+FOREIGN KEY (manager_user_id) REFERENCES users(id) ON DELETE SET NULL;
 
-CREATE TABLE schedules (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    branch_id INT NOT NULL,
-    shift_template_id INT NOT NULL,
-    schedule_date DATE NOT NULL,
-    required_staff INT NOT NULL DEFAULT 1,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
-    FOREIGN KEY (shift_template_id) REFERENCES shift_templates(id) ON DELETE CASCADE
-);
+-- =====================================================
+-- Bảng shifts - Ca làm việc
+-- =====================================================
+CREATE TABLE shifts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    store_id BIGINT NOT NULL COMMENT 'ID cơ sở',
+    title VARCHAR(100) NOT NULL COMMENT 'Tên ca (VD: Ca sáng)',
+    start_datetime DATETIME NOT NULL COMMENT 'Thời gian bắt đầu',
+    end_datetime DATETIME NOT NULL COMMENT 'Thời gian kết thúc',
+    required_slots INT DEFAULT 1 COMMENT 'Số nhân viên cần',
+    created_by BIGINT COMMENT 'Người tạo',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_shifts_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+    CONSTRAINT fk_shifts_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE schedule_assignments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    schedule_id INT NOT NULL,
-    user_id INT NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'CONFIRMED',
-    FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- =====================================================
+-- Bảng shift_assignments - Phân công ca làm
+-- =====================================================
+CREATE TABLE shift_assignments (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    shift_id BIGINT NOT NULL COMMENT 'ID ca làm',
+    user_id BIGINT NOT NULL COMMENT 'ID nhân viên',
+    status ENUM('ASSIGNED', 'CONFIRMED', 'DECLINED') NOT NULL DEFAULT 'ASSIGNED' COMMENT 'Trạng thái',
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_shift_assignments_shift FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_shift_assignments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_shift_user (shift_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE staff_availabilities (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
-    reason TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- =====================================================
+-- Bảng time_logs - Chấm công (Check-in/Check-out)
+-- =====================================================
+CREATE TABLE time_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL COMMENT 'ID nhân viên',
+    shift_id BIGINT COMMENT 'ID ca làm (nếu có)',
+    check_in DATETIME COMMENT 'Thời gian check-in',
+    check_out DATETIME COMMENT 'Thời gian check-out',
+    duration_minutes INT COMMENT 'Thời gian làm (phút)',
+    recorded_by ENUM('SYSTEM', 'MANUAL') NOT NULL DEFAULT 'SYSTEM' COMMENT 'Cách ghi nhận',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_time_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_time_logs_shift FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE leave_requests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    reason TEXT,
-    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-    manager_id INT,
-    approved_at TIMESTAMP NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- =====================================================
+-- Bảng requests - Yêu cầu nghỉ/đổi ca
+-- =====================================================
+CREATE TABLE requests (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL COMMENT 'ID nhân viên gửi yêu cầu',
+    type ENUM('LEAVE', 'SHIFT_CHANGE') NOT NULL COMMENT 'Loại yêu cầu',
+    start_datetime DATETIME NOT NULL COMMENT 'Thời gian bắt đầu',
+    end_datetime DATETIME NOT NULL COMMENT 'Thời gian kết thúc',
+    reason TEXT COMMENT 'Lý do',
+    status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING' COMMENT 'Trạng thái',
+    reviewed_by BIGINT COMMENT 'Người duyệt',
+    reviewed_at DATETIME COMMENT 'Thời gian duyệt',
+    review_note VARCHAR(500) COMMENT 'Ghi chú khi duyệt',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_requests_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_requests_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE shift_market (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    assignment_id INT UNIQUE NOT NULL,
-    offering_user_id INT NOT NULL,
-    claiming_user_id INT,
-    `status` VARCHAR(50) NOT NULL DEFAULT 'POSTED',
-    manager_id INT,
-    FOREIGN KEY (assignment_id) REFERENCES schedule_assignments(id) ON DELETE CASCADE,
-    FOREIGN KEY (offering_user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE work_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    branch_id INT NOT NULL,
-    check_in TIMESTAMP NOT NULL,
-    check_out TIMESTAMP NULL,
-    is_edited TINYINT(1) DEFAULT 0,
-    edit_reason TEXT,
-    edited_by_manager_id INT,
-    actual_hours DECIMAL(5, 2),
-    late_minutes INT,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
-);
-
+-- =====================================================
+-- Bảng payrolls - Bảng lương
+-- =====================================================
 CREATE TABLE payrolls (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    `month` INT NOT NULL,
-    `year` INT NOT NULL,
-    total_work_hours DECIMAL(5, 2) DEFAULT 0,
-    total_late_minutes INT DEFAULT 0,
-    base_pay DECIMAL(12, 2) NOT NULL,
-    total_bonus DECIMAL(12, 2) DEFAULT 0,
-    total_penalty DECIMAL(12, 2) DEFAULT 0,
-    final_pay DECIMAL(12, 2) NOT NULL,
-    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL COMMENT 'ID nhân viên',
+    month VARCHAR(7) NOT NULL COMMENT 'Tháng (YYYY-MM)',
+    total_hours DECIMAL(10, 2) DEFAULT 0 COMMENT 'Tổng giờ làm',
+    gross_pay DECIMAL(15, 2) DEFAULT 0 COMMENT 'Tổng lương',
+    adjustments DECIMAL(15, 2) DEFAULT 0 COMMENT 'Điều chỉnh (thưởng/phạt)',
+    adjustment_note VARCHAR(500) COMMENT 'Ghi chú điều chỉnh',
+    status ENUM('DRAFT', 'APPROVED', 'PAID') NOT NULL DEFAULT 'DRAFT' COMMENT 'Trạng thái',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    CONSTRAINT fk_payrolls_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_user_month (user_id, month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE payroll_adjustments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    payroll_id INT,
-    user_id INT NOT NULL,
-    manager_id INT NOT NULL,
-    `type` VARCHAR(50) NOT NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    reason TEXT NOT NULL,
+-- =====================================================
+-- Bảng notifications - Thông báo
+-- =====================================================
+CREATE TABLE notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL COMMENT 'ID người nhận',
+    title VARCHAR(200) NOT NULL COMMENT 'Tiêu đề',
+    message TEXT COMMENT 'Nội dung',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Đã đọc chưa',
+    link VARCHAR(500) COMMENT 'Link liên kết',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (payroll_id) REFERENCES payrolls(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE announcements (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    author_id INT NOT NULL,
-    branch_id INT,
-    title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- =====================================================
+-- Bảng audit_log - Nhật ký hoạt động
+-- =====================================================
+CREATE TABLE audit_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT COMMENT 'ID người thực hiện',
+    action VARCHAR(100) NOT NULL COMMENT 'Hành động',
+    entity VARCHAR(100) NOT NULL COMMENT 'Đối tượng',
+    entity_id BIGINT COMMENT 'ID đối tượng',
+    details TEXT COMMENT 'Chi tiết',
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_audit_log_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE complaints (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    staff_user_id INT NOT NULL,
-    branch_id INT NOT NULL,
-    content TEXT NOT NULL,
-    response TEXT,
-    `status` VARCHAR(50) NOT NULL DEFAULT 'SUBMITTED',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (staff_user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- =====================================================
+-- Tạo Indexes để tối ưu truy vấn
+-- =====================================================
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_store ON users(store_id);
+CREATE INDEX idx_users_status ON users(status);
+CREATE INDEX idx_shifts_store ON shifts(store_id);
+CREATE INDEX idx_shifts_datetime ON shifts(start_datetime, end_datetime);
+CREATE INDEX idx_time_logs_user ON time_logs(user_id);
+CREATE INDEX idx_time_logs_checkin ON time_logs(check_in);
+CREATE INDEX idx_requests_user ON requests(user_id);
+CREATE INDEX idx_requests_status ON requests(status);
+CREATE INDEX idx_payrolls_month ON payrolls(month);
+CREATE INDEX idx_notifications_user ON notifications(user_id);
+CREATE INDEX idx_notifications_read ON notifications(is_read);
+CREATE INDEX idx_audit_log_action ON audit_log(action);
+CREATE INDEX idx_audit_log_entity ON audit_log(entity);
 
-CREATE TABLE knowledge_articles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    category VARCHAR(100),
-    created_by_user_id INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- =====================================================
+-- Hoàn tất
+-- =====================================================
+SELECT 'Schema đã được tạo thành công!' AS Message;
 
-CREATE TABLE task_checklists (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    branch_id INT NOT NULL,
-    shift_template_id INT NOT NULL,
-    task_description TEXT NOT NULL,
-    is_active TINYINT(1) DEFAULT 1,
-    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
-);
 
-CREATE TABLE task_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    task_id INT NOT NULL,
-    user_id INT NOT NULL,
-    completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_id) REFERENCES task_checklists(id) ON DELETE CASCADE
-);
 
-CREATE TABLE audit_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    action VARCHAR(255) NOT NULL,
-    target_id VARCHAR(100),
-    details TEXT,
-    `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
 
-CREATE TABLE polls (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    author_id INT NOT NULL,
-    branch_id INT NOT NULL,
-    question TEXT NOT NULL,
-    -- QUAN TRỌNG: Đổi JSON thành LONGTEXT để tránh lỗi
-    options LONGTEXT NOT NULL, 
-    is_active TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
-);
 
-CREATE TABLE poll_votes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    poll_id INT NOT NULL,
-    user_id INT NOT NULL,
-    selected_option VARCHAR(255) NOT NULL,
-    FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE
-);
+
+
+
