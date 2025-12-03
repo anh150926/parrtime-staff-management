@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,13 +39,16 @@ public class TimeLogService {
     @Autowired
     private AuditService auditService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     /**
      * Check in for work
      */
     public TimeLogResponse checkIn(Long shiftId, UserPrincipal currentUser) {
         // Check if already checked in
         if (timeLogRepository.findActiveCheckIn(currentUser.getId()).isPresent()) {
-            throw new BadRequestException("You are already checked in. Please check out first.");
+            throw new BadRequestException("Bạn đã check-in rồi. Vui lòng check-out trước.");
         }
 
         User user = userRepository.findById(currentUser.getId())
@@ -59,10 +63,43 @@ public class TimeLogService {
         if (shiftId != null) {
             Shift shift = shiftRepository.findById(shiftId)
                     .orElseThrow(() -> new ResourceNotFoundException("Shift", "id", shiftId));
+            
+            // Kiểm tra thời gian check-in: chỉ cho phép trước 10 phút và sau 5 phút so với giờ bắt đầu ca
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime shiftStart = shift.getStartDatetime();
+            LocalDateTime allowedFrom = shiftStart.minusMinutes(10);  // Trước 10 phút
+            LocalDateTime allowedUntil = shiftStart.plusMinutes(5);   // Sau 5 phút
+            
+            if (now.isBefore(allowedFrom)) {
+                throw new BadRequestException("Chưa đến giờ check-in. Bạn chỉ có thể check-in trước 10 phút so với giờ bắt đầu ca.");
+            }
+            if (now.isAfter(allowedUntil)) {
+                throw new BadRequestException("Đã quá thời gian check-in. Bạn chỉ có thể check-in trong vòng 5 phút sau giờ bắt đầu ca.");
+            }
+            
             timeLog.setShift(shift);
         }
 
         TimeLog saved = timeLogRepository.save(timeLog);
+        
+        // Gửi thông báo cho manager khi nhân viên check-in
+        if (user.getStore() != null && saved.getShift() != null) {
+            List<User> managers = userRepository.findByStoreIdAndRole(user.getStore().getId(), Role.MANAGER);
+            String shiftTitle = saved.getShift().getTitle();
+            String checkInTime = saved.getCheckIn().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            String message = String.format("%s đã check-in ca \"%s\" lúc %s", 
+                user.getFullName(), shiftTitle, checkInTime);
+            
+            for (User manager : managers) {
+                notificationService.sendNotification(
+                    manager.getId(),
+                    "Nhân viên check-in",
+                    message,
+                    "/time-logs"
+                );
+            }
+        }
+        
         return TimeLogResponse.fromEntity(saved);
     }
 
@@ -81,6 +118,26 @@ public class TimeLogService {
         timeLog.setDurationMinutes(durationMinutes);
 
         TimeLog saved = timeLogRepository.save(timeLog);
+        
+        // Gửi thông báo cho manager khi nhân viên check-out
+        if (saved.getUser().getStore() != null && saved.getShift() != null) {
+            List<User> managers = userRepository.findByStoreIdAndRole(
+                saved.getUser().getStore().getId(), Role.MANAGER);
+            String shiftTitle = saved.getShift().getTitle();
+            String checkOutTimeStr = saved.getCheckOut().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            String message = String.format("%s đã check-out ca \"%s\" lúc %s", 
+                saved.getUser().getFullName(), shiftTitle, checkOutTimeStr);
+            
+            for (User manager : managers) {
+                notificationService.sendNotification(
+                    manager.getId(),
+                    "Nhân viên check-out",
+                    message,
+                    "/time-logs"
+                );
+            }
+        }
+        
         return TimeLogResponse.fromEntity(saved);
     }
 

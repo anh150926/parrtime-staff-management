@@ -128,7 +128,7 @@ const Login: React.FC = () => {
               <strong>Manager:</strong> managerA / password123
             </p>
             <p className="mb-0">
-              <strong>Staff:</strong> staff1 / password123
+              <strong>Staff:</strong> staff_a01 / password123
             </p>
           </div>
         </div>
