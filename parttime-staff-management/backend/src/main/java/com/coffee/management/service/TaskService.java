@@ -68,10 +68,10 @@ public class TaskService {
     }
 
     /**
-     * Get tasks assigned to current user or unassigned tasks in their store
+     * Get all tasks (including completed) assigned to current user or unassigned tasks in their store
      */
     public List<TaskResponse> getMyTasks(Long userId, Long storeId) {
-        return taskRepository.findActiveTasksForUserOrStore(userId, storeId)
+        return taskRepository.findAllTasksForUserOrStore(userId, storeId)
                 .stream()
                 .map(TaskResponse::fromEntity)
                 .collect(Collectors.toList());

@@ -47,6 +47,15 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findActiveTasksForUserOrStore(@Param("userId") Long userId, @Param("storeId") Long storeId);
 
     /**
+     * Find all tasks (including completed) for a user or their store
+     */
+    @Query("SELECT t FROM Task t " +
+           "WHERE (t.assignedTo.id = :userId OR (t.assignedTo IS NULL AND t.store.id = :storeId) OR (t.completedBy.id = :userId)) " +
+           "AND t.status != 'CANCELLED' " +
+           "ORDER BY t.status ASC, t.priority DESC, t.dueDate ASC")
+    List<Task> findAllTasksForUserOrStore(@Param("userId") Long userId, @Param("storeId") Long storeId);
+
+    /**
      * Find tasks by store and status
      */
     List<Task> findByStoreIdAndStatusOrderByDueDateAsc(Long storeId, TaskStatus status);
