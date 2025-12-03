@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { RootState, AppDispatch } from '../app/store';
-import { login, clearError } from '../features/auth/authSlice';
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { RootState, AppDispatch } from "../app/store";
+import { login, clearError } from "../features/auth/authSlice";
 
 const Login: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { loading, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
-  
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const { loading, error, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
 
@@ -40,7 +42,7 @@ const Login: React.FC = () => {
           <h1>Coffee House</h1>
           <p>Hệ thống quản lý nhân viên</p>
         </div>
-        
+
         <div className="login-body">
           {error && (
             <div className="alert alert-danger" role="alert">
@@ -80,7 +82,7 @@ const Login: React.FC = () => {
                   <i className="bi bi-lock"></i>
                 </span>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   className="form-control"
                   id="password"
                   placeholder="Nhập mật khẩu"
@@ -93,7 +95,9 @@ const Login: React.FC = () => {
                   className="btn btn-outline-secondary"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                  <i
+                    className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}
+                  ></i>
                 </button>
               </div>
             </div>
@@ -105,7 +109,10 @@ const Login: React.FC = () => {
             >
               {loading ? (
                 <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  ></span>
                   Đang đăng nhập...
                 </>
               ) : (
@@ -138,11 +145,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
-
-
-
-
-
-
-

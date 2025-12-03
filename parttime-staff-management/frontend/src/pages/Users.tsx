@@ -1,33 +1,44 @@
-import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../app/store';
-import { fetchUsers, createUser, updateUser, deleteUser } from '../features/users/userSlice';
-import { fetchStores } from '../features/stores/storeSlice';
-import { CreateUserRequest, UpdateUserRequest } from '../api/userService';
-import Loading from '../components/Loading';
-import Toast from '../components/Toast';
-import ConfirmModal from '../components/ConfirmModal';
-import { formatCurrency, formatDateTime } from '../utils/formatters';
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../app/store";
+import {
+  fetchUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+} from "../features/users/userSlice";
+import { fetchStores } from "../features/stores/storeSlice";
+import { CreateUserRequest, UpdateUserRequest } from "../api/userService";
+import Loading from "../components/Loading";
+import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
+import { formatCurrency, formatDateTime } from "../utils/formatters";
 
 const Users: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user: currentUser } = useSelector((state: RootState) => state.auth);
-  const { users, loading, error } = useSelector((state: RootState) => state.users);
+  const { users, loading, error } = useSelector(
+    (state: RootState) => state.users
+  );
   const { stores } = useSelector((state: RootState) => state.stores);
 
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [formData, setFormData] = useState<CreateUserRequest>({
-    username: '',
-    password: '',
-    fullName: '',
-    email: '',
-    phone: '',
-    role: 'STAFF',
+    username: "",
+    password: "",
+    fullName: "",
+    email: "",
+    phone: "",
+    role: "STAFF",
     storeId: undefined,
     hourlyRate: undefined,
   });
-  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ show: false, message: '', type: 'success' });
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error" | "warning" | "info";
+  }>({ show: false, message: "", type: "success" });
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   useEffect(() => {
@@ -37,13 +48,14 @@ const Users: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      username: '',
-      password: '',
-      fullName: '',
-      email: '',
-      phone: '',
-      role: 'STAFF',
-      storeId: currentUser?.role === 'MANAGER' ? currentUser.storeId : undefined,
+      username: "",
+      password: "",
+      fullName: "",
+      email: "",
+      phone: "",
+      role: "STAFF",
+      storeId:
+        currentUser?.role === "MANAGER" ? currentUser.storeId : undefined,
       hourlyRate: undefined,
     });
     setEditingUser(null);
@@ -54,10 +66,10 @@ const Users: React.FC = () => {
       setEditingUser(user);
       setFormData({
         username: user.username,
-        password: '',
+        password: "",
         fullName: user.fullName,
         email: user.email,
-        phone: user.phone || '',
+        phone: user.phone || "",
         role: user.role,
         storeId: user.storeId,
         hourlyRate: user.hourlyRate,
@@ -85,41 +97,68 @@ const Users: React.FC = () => {
           storeId: formData.storeId,
           hourlyRate: formData.hourlyRate,
         };
-        await dispatch(updateUser({ id: editingUser.id, data: updateData })).unwrap();
-        setToast({ show: true, message: 'Cập nhật nhân viên thành công!', type: 'success' });
+        await dispatch(
+          updateUser({ id: editingUser.id, data: updateData })
+        ).unwrap();
+        setToast({
+          show: true,
+          message: "Cập nhật nhân viên thành công!",
+          type: "success",
+        });
       } else {
         await dispatch(createUser(formData)).unwrap();
-        setToast({ show: true, message: 'Thêm nhân viên thành công!', type: 'success' });
+        setToast({
+          show: true,
+          message: "Thêm nhân viên thành công!",
+          type: "success",
+        });
       }
       handleCloseModal();
     } catch (err: any) {
-      setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });
+      setToast({ show: true, message: err || "Có lỗi xảy ra!", type: "error" });
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await dispatch(deleteUser(id)).unwrap();
-      setToast({ show: true, message: 'Xóa nhân viên thành công!', type: 'success' });
+      setToast({
+        show: true,
+        message: "Xóa nhân viên thành công!",
+        type: "success",
+      });
     } catch (err: any) {
-      setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });
+      setToast({ show: true, message: err || "Có lỗi xảy ra!", type: "error" });
     }
     setConfirmDelete(null);
   };
 
+  const handleRestore = async (id: number) => {
+    try {
+      await dispatch(updateUser({ id, data: { status: "ACTIVE" } })).unwrap();
+      setToast({
+        show: true,
+        message: "Khôi phục nhân viên thành công!",
+        type: "success",
+      });
+    } catch (err: any) {
+      setToast({ show: true, message: err || "Có lỗi xảy ra!", type: "error" });
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     const badges: Record<string, { class: string; label: string }> = {
-      OWNER: { class: 'badge-owner', label: 'Chủ sở hữu' },
-      MANAGER: { class: 'badge-manager', label: 'Quản lý' },
-      STAFF: { class: 'badge-staff', label: 'Nhân viên' },
+      OWNER: { class: "badge-owner", label: "Chủ sở hữu" },
+      MANAGER: { class: "badge-manager", label: "Quản lý" },
+      STAFF: { class: "badge-staff", label: "Nhân viên" },
     };
-    return badges[role] || { class: 'bg-secondary', label: role };
+    return badges[role] || { class: "bg-secondary", label: role };
   };
 
   const getStatusBadge = (status: string) => {
-    return status === 'ACTIVE'
-      ? { class: 'status-active', label: 'Hoạt động' }
-      : { class: 'status-inactive', label: 'Ngừng' };
+    return status === "ACTIVE"
+      ? { class: "status-active", label: "Hoạt động" }
+      : { class: "status-inactive", label: "Ngừng" };
   };
 
   if (loading) {
@@ -131,7 +170,9 @@ const Users: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="mb-1">Quản lý nhân viên</h2>
-          <p className="text-muted mb-0">Danh sách và quản lý thông tin nhân viên</p>
+          <p className="text-muted mb-0">
+            Danh sách và quản lý thông tin nhân viên
+          </p>
         </div>
         <button className="btn btn-coffee" onClick={() => handleOpenModal()}>
           <i className="bi bi-plus-circle me-2"></i>
@@ -177,14 +218,22 @@ const Users: React.FC = () => {
                     </td>
                     <td>{user.email}</td>
                     <td>
-                      <span className={`badge ${getRoleBadge(user.role).class}`}>
+                      <span
+                        className={`badge ${getRoleBadge(user.role).class}`}
+                      >
                         {getRoleBadge(user.role).label}
                       </span>
                     </td>
-                    <td>{user.storeName || '---'}</td>
-                    <td>{user.hourlyRate ? formatCurrency(user.hourlyRate) : '---'}</td>
+                    <td>{user.storeName || "---"}</td>
                     <td>
-                      <span className={`badge ${getStatusBadge(user.status).class}`}>
+                      {user.hourlyRate
+                        ? formatCurrency(user.hourlyRate)
+                        : "---"}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${getStatusBadge(user.status).class}`}
+                      >
                         {getStatusBadge(user.status).label}
                       </span>
                     </td>
@@ -196,14 +245,25 @@ const Users: React.FC = () => {
                       >
                         <i className="bi bi-pencil"></i>
                       </button>
-                      {user.role !== 'OWNER' && currentUser?.id !== user.id && (
+                      {user.status === "INACTIVE" ? (
                         <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => setConfirmDelete(user.id)}
-                          title="Xóa"
+                          className="btn btn-sm btn-outline-success"
+                          onClick={() => handleRestore(user.id)}
+                          title="Khôi phục"
                         >
-                          <i className="bi bi-trash"></i>
+                          <i className="bi bi-arrow-counterclockwise"></i>
                         </button>
+                      ) : (
+                        user.role !== "OWNER" &&
+                        currentUser?.id !== user.id && (
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => setConfirmDelete(user.id)}
+                            title="Xóa"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </button>
+                        )
                       )}
                     </td>
                   </tr>
@@ -229,7 +289,7 @@ const Users: React.FC = () => {
               <div className="modal-content modal-coffee">
                 <div className="modal-header">
                   <h5 className="modal-title">
-                    {editingUser ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới'}
+                    {editingUser ? "Cập nhật nhân viên" : "Thêm nhân viên mới"}
                   </h5>
                   <button
                     type="button"
@@ -243,13 +303,18 @@ const Users: React.FC = () => {
                       {!editingUser && (
                         <>
                           <div className="col-md-6">
-                            <label className="form-label">Tên đăng nhập *</label>
+                            <label className="form-label">
+                              Tên đăng nhập *
+                            </label>
                             <input
                               type="text"
                               className="form-control"
                               value={formData.username}
                               onChange={(e) =>
-                                setFormData({ ...formData, username: e.target.value })
+                                setFormData({
+                                  ...formData,
+                                  username: e.target.value,
+                                })
                               }
                               required
                             />
@@ -261,7 +326,10 @@ const Users: React.FC = () => {
                               className="form-control"
                               value={formData.password}
                               onChange={(e) =>
-                                setFormData({ ...formData, password: e.target.value })
+                                setFormData({
+                                  ...formData,
+                                  password: e.target.value,
+                                })
                               }
                               required={!editingUser}
                             />
@@ -275,7 +343,10 @@ const Users: React.FC = () => {
                           className="form-control"
                           value={formData.fullName}
                           onChange={(e) =>
-                            setFormData({ ...formData, fullName: e.target.value })
+                            setFormData({
+                              ...formData,
+                              fullName: e.target.value,
+                            })
                           }
                           required
                         />
@@ -311,12 +382,15 @@ const Users: React.FC = () => {
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              role: e.target.value as 'OWNER' | 'MANAGER' | 'STAFF',
+                              role: e.target.value as
+                                | "OWNER"
+                                | "MANAGER"
+                                | "STAFF",
                             })
                           }
-                          disabled={currentUser?.role === 'MANAGER'}
+                          disabled={currentUser?.role === "MANAGER"}
                         >
-                          {currentUser?.role === 'OWNER' && (
+                          {currentUser?.role === "OWNER" && (
                             <>
                               <option value="MANAGER">Quản lý</option>
                             </>
@@ -328,14 +402,16 @@ const Users: React.FC = () => {
                         <label className="form-label">Cơ sở làm việc</label>
                         <select
                           className="form-select"
-                          value={formData.storeId || ''}
+                          value={formData.storeId || ""}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              storeId: e.target.value ? Number(e.target.value) : undefined,
+                              storeId: e.target.value
+                                ? Number(e.target.value)
+                                : undefined,
                             })
                           }
-                          disabled={currentUser?.role === 'MANAGER'}
+                          disabled={currentUser?.role === "MANAGER"}
                         >
                           <option value="">-- Chọn cơ sở --</option>
                           {stores.map((store) => (
@@ -350,11 +426,13 @@ const Users: React.FC = () => {
                         <input
                           type="number"
                           className="form-control"
-                          value={formData.hourlyRate || ''}
+                          value={formData.hourlyRate || ""}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              hourlyRate: e.target.value ? Number(e.target.value) : undefined,
+                              hourlyRate: e.target.value
+                                ? Number(e.target.value)
+                                : undefined,
                             })
                           }
                           min="0"
@@ -371,7 +449,7 @@ const Users: React.FC = () => {
                       Hủy
                     </button>
                     <button type="submit" className="btn btn-coffee">
-                      {editingUser ? 'Cập nhật' : 'Thêm mới'}
+                      {editingUser ? "Cập nhật" : "Thêm mới"}
                     </button>
                   </div>
                 </form>
@@ -402,4 +480,3 @@ const Users: React.FC = () => {
 };
 
 export default Users;
-

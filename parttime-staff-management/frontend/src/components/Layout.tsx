@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../app/store';
-import { logout } from '../features/auth/authSlice';
-import { fetchUnreadCount } from '../features/notifications/notificationSlice';
+import React, { useState, useEffect } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../app/store";
+import { logout } from "../features/auth/authSlice";
+import { fetchUnreadCount } from "../features/notifications/notificationSlice";
 
 const Layout: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { unreadCount } = useSelector((state: RootState) => state.notifications);
+  const { unreadCount } = useSelector(
+    (state: RootState) => state.notifications
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -23,7 +25,7 @@ const Layout: React.FC = () => {
 
   const handleLogout = async () => {
     await dispatch(logout());
-    navigate('/login');
+    navigate("/login");
   };
 
   const toggleSidebar = () => {
@@ -32,23 +34,23 @@ const Layout: React.FC = () => {
 
   const getRoleBadgeClass = (role: string) => {
     switch (role) {
-      case 'OWNER':
-        return 'badge-owner';
-      case 'MANAGER':
-        return 'badge-manager';
+      case "OWNER":
+        return "badge-owner";
+      case "MANAGER":
+        return "badge-manager";
       default:
-        return 'badge-staff';
+        return "badge-staff";
     }
   };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'OWNER':
-        return 'Chủ sở hữu';
-      case 'MANAGER':
-        return 'Quản lý';
+      case "OWNER":
+        return "Chủ sở hữu";
+      case "MANAGER":
+        return "Quản lý";
       default:
-        return 'Nhân viên';
+        return "Nhân viên";
     }
   };
 
@@ -80,10 +82,16 @@ const Layout: React.FC = () => {
                   <span className="notification-badge">{unreadCount}</span>
                 )}
               </button>
-              <div className="dropdown-menu dropdown-menu-end" style={{ width: '300px' }}>
+              <div
+                className="dropdown-menu dropdown-menu-end"
+                style={{ width: "300px" }}
+              >
                 <h6 className="dropdown-header">Thông báo</h6>
                 <div className="dropdown-divider"></div>
-                <NavLink to="/notifications" className="dropdown-item text-center">
+                <NavLink
+                  to="/notifications"
+                  className="dropdown-item text-center"
+                >
                   Xem tất cả thông báo
                 </NavLink>
               </div>
@@ -105,8 +113,10 @@ const Layout: React.FC = () => {
                 <div className="dropdown-header">
                   <strong>{user?.fullName}</strong>
                   <br />
-                  <small className={`badge ${getRoleBadgeClass(user?.role || '')}`}>
-                    {getRoleLabel(user?.role || '')}
+                  <small
+                    className={`badge ${getRoleBadgeClass(user?.role || "")}`}
+                  >
+                    {getRoleLabel(user?.role || "")}
                   </small>
                 </div>
                 <div className="dropdown-divider"></div>
@@ -115,7 +125,10 @@ const Layout: React.FC = () => {
                   Hồ sơ cá nhân
                 </NavLink>
                 <div className="dropdown-divider"></div>
-                <button className="dropdown-item text-danger" onClick={handleLogout}>
+                <button
+                  className="dropdown-item text-danger"
+                  onClick={handleLogout}
+                >
                   <i className="bi bi-box-arrow-right me-2"></i>
                   Đăng xuất
                 </button>
@@ -126,94 +139,158 @@ const Layout: React.FC = () => {
       </nav>
 
       {/* Sidebar */}
-      <div className={`sidebar ${sidebarOpen ? 'show' : ''}`}>
-        <nav className="nav flex-column pt-3">
-          <NavLink to="/dashboard" className="nav-link" onClick={() => setSidebarOpen(false)}>
+      <div className={`sidebar ${sidebarOpen ? "show" : ""}`}>
+        <nav className="sidebar-nav">
+          <NavLink
+            to="/dashboard"
+            className="nav-link"
+            onClick={() => setSidebarOpen(false)}
+          >
             <i className="bi bi-speedometer2"></i>
             Tổng quan
           </NavLink>
 
           {/* Owner and Manager can see Users */}
-          {(user?.role === 'OWNER' || user?.role === 'MANAGER') && (
-            <NavLink to="/users" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {(user?.role === "OWNER" || user?.role === "MANAGER") && (
+            <NavLink
+              to="/users"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
               <i className="bi bi-people"></i>
               Nhân viên
             </NavLink>
           )}
 
           {/* Owner only can see Stores */}
-          {user?.role === 'OWNER' && (
-            <NavLink to="/stores" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {user?.role === "OWNER" && (
+            <NavLink
+              to="/stores"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
               <i className="bi bi-shop"></i>
               Cơ sở
             </NavLink>
           )}
 
           {/* Owner and Manager can see Shifts */}
-          {(user?.role === 'OWNER' || user?.role === 'MANAGER') && (
-            <NavLink to="/shifts" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {(user?.role === "OWNER" || user?.role === "MANAGER") && (
+            <NavLink
+              to="/shifts"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
               <i className="bi bi-calendar3"></i>
               Lịch làm việc
             </NavLink>
           )}
 
           {/* Staff can see My Shifts */}
-          {user?.role === 'STAFF' && (
-            <NavLink to="/my-shifts" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {user?.role === "STAFF" && (
+            <NavLink
+              to="/my-shifts"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
               <i className="bi bi-calendar-check"></i>
               Ca làm của tôi
             </NavLink>
           )}
 
           {/* Marketplace for all */}
-          <NavLink to="/marketplace" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          <NavLink
+            to="/marketplace"
+            className="nav-link"
+            onClick={() => setSidebarOpen(false)}
+          >
             <i className="bi bi-shop-window"></i>
             Chợ Ca
           </NavLink>
 
           {/* Tasks */}
-          <NavLink to="/tasks" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          <NavLink
+            to="/tasks"
+            className="nav-link"
+            onClick={() => setSidebarOpen(false)}
+          >
             <i className="bi bi-list-check"></i>
             Nhiệm vụ
           </NavLink>
 
-          <NavLink to="/requests" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {/* Create Task For Staff - Manager and Owner only */}
+          {(user?.role === "OWNER" || user?.role === "MANAGER") && (
+            <NavLink
+              to="/create-task-for-staff"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <i className="bi bi-clipboard-check"></i>
+              Giao nhiệm vụ
+            </NavLink>
+          )}
+
+          <NavLink
+            to="/requests"
+            className="nav-link"
+            onClick={() => setSidebarOpen(false)}
+          >
             <i className="bi bi-file-earmark-text"></i>
             Yêu cầu
           </NavLink>
 
           {/* Owner and Manager can see Payrolls */}
-          {(user?.role === 'OWNER' || user?.role === 'MANAGER') && (
-            <NavLink to="/payrolls" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {(user?.role === "OWNER" || user?.role === "MANAGER") && (
+            <NavLink
+              to="/payrolls"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
               <i className="bi bi-cash-stack"></i>
               Bảng lương
             </NavLink>
           )}
 
           {/* Owner can see Reports */}
-          {user?.role === 'OWNER' && (
-            <NavLink to="/reports" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {user?.role === "OWNER" && (
+            <NavLink
+              to="/reports"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
               <i className="bi bi-bar-chart-line"></i>
               Báo cáo
             </NavLink>
           )}
 
           {/* Owner can see Employee Rankings */}
-          {user?.role === 'OWNER' && (
-            <NavLink to="/rankings" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          {user?.role === "OWNER" && (
+            <NavLink
+              to="/rankings"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
               <i className="bi bi-trophy"></i>
               Xếp hạng NV
             </NavLink>
           )}
 
           {/* Complaints - All users */}
-          <NavLink to="/complaints" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          <NavLink
+            to="/complaints"
+            className="nav-link"
+            onClick={() => setSidebarOpen(false)}
+          >
             <i className="bi bi-exclamation-triangle"></i>
             Khiếu nại
           </NavLink>
 
           {/* Notifications for all */}
-          <NavLink to="/notifications" className="nav-link" onClick={() => setSidebarOpen(false)}>
+          <NavLink
+            to="/notifications"
+            className="nav-link"
+            onClick={() => setSidebarOpen(false)}
+          >
             <i className="bi bi-bell"></i>
             Thông báo
             {unreadCount > 0 && (
@@ -224,7 +301,7 @@ const Layout: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <main className="main-content" style={{ marginTop: '56px' }}>
+      <main className="main-content" style={{ marginTop: "56px" }}>
         <Outlet />
       </main>
 
@@ -241,8 +318,3 @@ const Layout: React.FC = () => {
 };
 
 export default Layout;
-
-
-
-
-

@@ -38,6 +38,15 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findActiveTasksForUser(@Param("userId") Long userId);
 
     /**
+     * Find pending/in-progress tasks for a user or unassigned tasks in their store
+     */
+    @Query("SELECT t FROM Task t " +
+           "WHERE (t.assignedTo.id = :userId OR (t.assignedTo IS NULL AND t.store.id = :storeId)) " +
+           "AND t.status IN ('PENDING', 'IN_PROGRESS') " +
+           "ORDER BY t.priority DESC, t.dueDate ASC")
+    List<Task> findActiveTasksForUserOrStore(@Param("userId") Long userId, @Param("storeId") Long storeId);
+
+    /**
      * Find tasks by store and status
      */
     List<Task> findByStoreIdAndStatusOrderByDueDateAsc(Long storeId, TaskStatus status);

@@ -120,6 +120,18 @@ export const updateTask = createAsyncThunk(
   }
 );
 
+export const startTask = createAsyncThunk(
+  'tasks/start',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await taskService.startTask(id);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to start task');
+    }
+  }
+);
+
 export const completeTask = createAsyncThunk(
   'tasks/complete',
   async (id: number, { rejectWithValue }) => {
@@ -218,6 +230,17 @@ const taskSlice = createSlice({
       })
       // Update
       .addCase(updateTask.fulfilled, (state, action: PayloadAction<Task>) => {
+        const index = state.tasks.findIndex(t => t.id === action.payload.id);
+        if (index !== -1) {
+          state.tasks[index] = action.payload;
+        }
+        const myIndex = state.myTasks.findIndex(t => t.id === action.payload.id);
+        if (myIndex !== -1) {
+          state.myTasks[myIndex] = action.payload;
+        }
+      })
+      // Start
+      .addCase(startTask.fulfilled, (state, action: PayloadAction<Task>) => {
         const index = state.tasks.findIndex(t => t.id === action.payload.id);
         if (index !== -1) {
           state.tasks[index] = action.payload;

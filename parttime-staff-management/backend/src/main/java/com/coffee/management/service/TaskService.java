@@ -68,10 +68,10 @@ public class TaskService {
     }
 
     /**
-     * Get tasks assigned to current user
+     * Get tasks assigned to current user or unassigned tasks in their store
      */
-    public List<TaskResponse> getMyTasks(Long userId) {
-        return taskRepository.findActiveTasksForUser(userId)
+    public List<TaskResponse> getMyTasks(Long userId, Long storeId) {
+        return taskRepository.findActiveTasksForUserOrStore(userId, storeId)
                 .stream()
                 .map(TaskResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -138,7 +138,7 @@ public class TaskService {
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .priority(request.getPriority())
-                .status(TaskStatus.PENDING)
+                .status(request.getStatus() != null ? request.getStatus() : TaskStatus.PENDING)
                 .dueDate(request.getDueDate())
                 .notes(request.getNotes())
                 .createdBy(creator)
@@ -235,16 +235,58 @@ public class TaskService {
     }
 
     /**
+     * Start working on a task (for staff)
+     */
+    public TaskResponse startTask(Long id, UserPrincipal currentUser) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Task", "id", id));
+
+        // Validate staff can only start tasks assigned to them or general tasks (assignedToId = null)
+        if (currentUser.getRole().equals("STAFF")) {
+            if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(currentUser.getId())) {
+                throw new ForbiddenException("You can only start tasks assigned to you");
+            }
+            // If task has no specific assignee (assignedToId = null), any staff in the same store can start it
+            if (task.getStore().getId() == null || !task.getStore().getId().equals(currentUser.getStoreId())) {
+                throw new ForbiddenException("You can only start tasks from your store");
+            }
+        }
+
+        if (task.getStatus() != TaskStatus.PENDING) {
+            throw new BadRequestException("Only pending tasks can be started");
+        }
+
+        task.setStatus(TaskStatus.IN_PROGRESS);
+        
+        // If task was assigned to all staff, now assign to the one who started it
+        if (task.getAssignedTo() == null) {
+            User staff = userRepository.findById(currentUser.getId()).orElse(null);
+            task.setAssignedTo(staff);
+        }
+
+        Task updated = taskRepository.save(task);
+
+        auditService.log(currentUser.getId(), "START", "TASK", id,
+                "Started task: " + task.getTitle());
+
+        return TaskResponse.fromEntity(updated);
+    }
+
+    /**
      * Mark task as completed by staff
      */
     public TaskResponse completeTask(Long id, UserPrincipal currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", "id", id));
 
-        // Validate staff can only complete their assigned tasks
+        // Validate staff can only complete tasks assigned to them or general tasks (assignedToId = null)
         if (currentUser.getRole().equals("STAFF")) {
-            if (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(currentUser.getId())) {
+            if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(currentUser.getId())) {
                 throw new ForbiddenException("You can only complete tasks assigned to you");
+            }
+            // If task has no specific assignee (assignedToId = null), any staff in the same store can complete it
+            if (task.getStore().getId() == null || !task.getStore().getId().equals(currentUser.getStoreId())) {
+                throw new ForbiddenException("You can only complete tasks from your store");
             }
         }
 

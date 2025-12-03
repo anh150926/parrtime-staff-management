@@ -49,7 +49,7 @@ public class TaskController {
     @Operation(summary = "Get tasks assigned to me")
     public ResponseEntity<ApiResponse<List<TaskResponse>>> getMyTasks(
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        List<TaskResponse> tasks = taskService.getMyTasks(currentUser.getId());
+        List<TaskResponse> tasks = taskService.getMyTasks(currentUser.getId(), currentUser.getStoreId());
         return ResponseEntity.ok(ApiResponse.success(tasks));
     }
 
@@ -99,6 +99,15 @@ public class TaskController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         TaskResponse task = taskService.updateTask(id, request, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật nhiệm vụ thành công", task));
+    }
+
+    @PostMapping("/{id}/start")
+    @Operation(summary = "Start working on a task")
+    public ResponseEntity<ApiResponse<TaskResponse>> startTask(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        TaskResponse task = taskService.startTask(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Đã bắt đầu làm nhiệm vụ", task));
     }
 
     @PostMapping("/{id}/complete")

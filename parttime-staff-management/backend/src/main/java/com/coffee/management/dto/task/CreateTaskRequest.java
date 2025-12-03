@@ -1,6 +1,7 @@
 package com.coffee.management.dto.task;
 
 import com.coffee.management.entity.TaskPriority;
+import com.coffee.management.entity.TaskStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -28,9 +29,13 @@ public class CreateTaskRequest {
     
     private Long assignedToId;
     
+    @NotNull(message = "Due date is required")
     private LocalDateTime dueDate;
     
     private String notes;
+    
+    @Builder.Default
+    private TaskStatus status = TaskStatus.PENDING;
 }
 
 

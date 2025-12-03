@@ -71,10 +71,10 @@ public class TaskResponse {
                    .createdByName(task.getCreatedBy().getFullName());
         }
 
-        // Calculate overdue status
+        // Calculate overdue status - chỉ đếm task quá hạn mà chưa hoàn thành
         boolean overdue = task.getDueDate() != null 
                 && task.getDueDate().isBefore(LocalDateTime.now())
-                && (task.getStatus() == TaskStatus.PENDING || task.getStatus() == TaskStatus.IN_PROGRESS);
+                && task.getStatus() != TaskStatus.COMPLETED;
         builder.isOverdue(overdue);
 
         return builder.build();

@@ -1,6 +1,9 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import userService, { CreateUserRequest, UpdateUserRequest } from '../../api/userService';
-import { User } from '../../api/authService';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import userService, {
+  CreateUserRequest,
+  UpdateUserRequest,
+} from "../../api/userService";
+import { User } from "../../api/authService";
 
 interface UserState {
   users: User[];
@@ -17,67 +20,80 @@ const initialState: UserState = {
 };
 
 export const fetchUsers = createAsyncThunk(
-  'users/fetchAll',
+  "users/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
       const response = await userService.getAll();
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch users');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch users"
+      );
     }
   }
 );
 
 export const fetchUserById = createAsyncThunk(
-  'users/fetchById',
+  "users/fetchById",
   async (id: number, { rejectWithValue }) => {
     try {
       const response = await userService.getById(id);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch user"
+      );
     }
   }
 );
 
 export const createUser = createAsyncThunk(
-  'users/create',
+  "users/create",
   async (data: CreateUserRequest, { rejectWithValue }) => {
     try {
       const response = await userService.create(data);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create user');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create user"
+      );
     }
   }
 );
 
 export const updateUser = createAsyncThunk(
-  'users/update',
-  async ({ id, data }: { id: number; data: UpdateUserRequest }, { rejectWithValue }) => {
+  "users/update",
+  async (
+    { id, data }: { id: number; data: UpdateUserRequest },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await userService.update(id, data);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update user');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update user"
+      );
     }
   }
 );
 
 export const deleteUser = createAsyncThunk(
-  'users/delete',
+  "users/delete",
   async (id: number, { rejectWithValue }) => {
     try {
       await userService.delete(id);
       return id;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to delete user');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to delete user"
+      );
     }
   }
 );
 
 const userSlice = createSlice({
-  name: 'users',
+  name: "users",
   initialState,
   reducers: {
     clearError: (state) => {
@@ -115,18 +131,14 @@ const userSlice = createSlice({
         state.selectedUser = action.payload;
       })
       .addCase(deleteUser.fulfilled, (state, action) => {
-        state.users = state.users.filter((u) => u.id !== action.payload);
+        const id = action.payload as number;
+        const index = state.users.findIndex((u) => u.id === id);
+        if (index !== -1) {
+          state.users[index].status = "INACTIVE";
+        }
       });
   },
 });
 
 export const { clearError, clearSelectedUser } = userSlice.actions;
 export default userSlice.reducer;
-
-
-
-
-
-
-
-

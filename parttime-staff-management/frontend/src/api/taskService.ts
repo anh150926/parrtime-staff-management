@@ -1,7 +1,7 @@
-import api from './axios';
+import api from "./axios";
 
-export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type TaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 export interface Task {
   id: number;
@@ -37,6 +37,7 @@ export interface CreateTaskRequest {
   assignedToId?: number;
   dueDate?: string;
   notes?: string;
+  status?: TaskStatus;
 }
 
 export interface UpdateTaskRequest {
@@ -50,42 +51,62 @@ export interface UpdateTaskRequest {
 }
 
 const taskService = {
-  getTasksByStore: (storeId: number) => 
-    api.get<Task[]>(`/tasks/store/${storeId}`),
+  getTasksByStore: (storeId: number) =>
+    api
+      .get<any>(`/tasks/store/${storeId}`)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  getTasksByShift: (shiftId: number) => 
-    api.get<Task[]>(`/tasks/shift/${shiftId}`),
+  getTasksByShift: (shiftId: number) =>
+    api
+      .get<any>(`/tasks/shift/${shiftId}`)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  getMyTasks: () => 
-    api.get<Task[]>('/tasks/my-tasks'),
+  getMyTasks: () =>
+    api
+      .get<any>("/tasks/my-tasks")
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  getTodaysTasks: (storeId: number) => 
-    api.get<Task[]>(`/tasks/today/${storeId}`),
+  getTodaysTasks: (storeId: number) =>
+    api
+      .get<any>(`/tasks/today/${storeId}`)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  getOverdueTasks: (storeId: number) => 
-    api.get<Task[]>(`/tasks/overdue/${storeId}`),
+  getOverdueTasks: (storeId: number) =>
+    api
+      .get<any>(`/tasks/overdue/${storeId}`)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  getTaskById: (id: number) => 
-    api.get<Task>(`/tasks/${id}`),
+  getTaskById: (id: number) =>
+    api
+      .get<any>(`/tasks/${id}`)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  createTask: (data: CreateTaskRequest) => 
-    api.post<Task>('/tasks', data),
+  createTask: (data: CreateTaskRequest) =>
+    api
+      .post<any>("/tasks", data)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  updateTask: (id: number, data: UpdateTaskRequest) => 
-    api.put<Task>(`/tasks/${id}`, data),
+  updateTask: (id: number, data: UpdateTaskRequest) =>
+    api
+      .put<any>(`/tasks/${id}`, data)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  completeTask: (id: number) => 
-    api.post<Task>(`/tasks/${id}/complete`),
+  startTask: (id: number) =>
+    api
+      .post<any>(`/tasks/${id}/start`)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  deleteTask: (id: number) => 
-    api.delete(`/tasks/${id}`),
+  completeTask: (id: number) =>
+    api
+      .post<any>(`/tasks/${id}/complete`)
+      .then((res) => ({ data: res.data.data || res.data })),
 
-  getTaskStats: (storeId: number) => 
-    api.get<Record<string, number>>(`/tasks/stats/${storeId}`),
+  deleteTask: (id: number) => api.delete(`/tasks/${id}`),
+
+  getTaskStats: (storeId: number) =>
+    api
+      .get<any>(`/tasks/stats/${storeId}`)
+      .then((res) => ({ data: res.data.data || res.data })),
 };
 
 export default taskService;
-
-
-
-
