@@ -64,17 +64,17 @@ public class TimeLogService {
             Shift shift = shiftRepository.findById(shiftId)
                     .orElseThrow(() -> new ResourceNotFoundException("Shift", "id", shiftId));
             
-            // Kiểm tra thời gian check-in: chỉ cho phép trước 10 phút và sau 5 phút so với giờ bắt đầu ca
+            // Kiểm tra thời gian check-in: cho phép từ trước 10 phút đến hết giờ làm việc của ca
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime shiftStart = shift.getStartDatetime();
+            LocalDateTime shiftEnd = shift.getEndDatetime();
             LocalDateTime allowedFrom = shiftStart.minusMinutes(10);  // Trước 10 phút
-            LocalDateTime allowedUntil = shiftStart.plusMinutes(5);   // Sau 5 phút
             
             if (now.isBefore(allowedFrom)) {
                 throw new BadRequestException("Chưa đến giờ check-in. Bạn chỉ có thể check-in trước 10 phút so với giờ bắt đầu ca.");
             }
-            if (now.isAfter(allowedUntil)) {
-                throw new BadRequestException("Đã quá thời gian check-in. Bạn chỉ có thể check-in trong vòng 5 phút sau giờ bắt đầu ca.");
+            if (now.isAfter(shiftEnd)) {
+                throw new BadRequestException("Đã quá thời gian hết ca. Không thể check-in cho ca đã kết thúc.");
             }
             
             timeLog.setShift(shift);
@@ -87,13 +87,25 @@ public class TimeLogService {
             List<User> managers = userRepository.findByStoreIdAndRole(user.getStore().getId(), Role.MANAGER);
             String shiftTitle = saved.getShift().getTitle();
             String checkInTime = saved.getCheckIn().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-            String message = String.format("%s đã check-in ca \"%s\" lúc %s", 
-                user.getFullName(), shiftTitle, checkInTime);
+            
+            // Kiểm tra đi muộn (check-in sau 5 phút so với giờ bắt đầu ca)
+            LocalDateTime shiftStart = saved.getShift().getStartDatetime();
+            LocalDateTime lateThreshold = shiftStart.plusMinutes(5);
+            boolean isLate = saved.getCheckIn().isAfter(lateThreshold);
+            
+            String message;
+            if (isLate) {
+                message = String.format("%s đã check-in ca \"%s\" lúc %s (Đi muộn)", 
+                    user.getFullName(), shiftTitle, checkInTime);
+            } else {
+                message = String.format("%s đã check-in ca \"%s\" lúc %s", 
+                    user.getFullName(), shiftTitle, checkInTime);
+            }
             
             for (User manager : managers) {
                 notificationService.sendNotification(
                     manager.getId(),
-                    "Nhân viên check-in",
+                    isLate ? "Nhân viên check-in (Đi muộn)" : "Nhân viên check-in",
                     message,
                     "/time-logs"
                 );

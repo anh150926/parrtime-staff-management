@@ -123,28 +123,38 @@ const MyShifts: React.FC = () => {
     
     const now = new Date();
     const shiftStart = new Date(shift.startDatetime);
+    const shiftEnd = new Date(shift.endDatetime);
     
-    // Cho phép check-in trước 10 phút và sau 5 phút so với giờ bắt đầu ca
+    // Cho phép check-in từ trước 10 phút đến hết giờ làm việc của ca
     const checkInAllowedFrom = new Date(shiftStart.getTime() - 10 * 60 * 1000); // Trước 10 phút
-    const checkInAllowedUntil = new Date(shiftStart.getTime() + 5 * 60 * 1000);  // Sau 5 phút
     
-    return now >= checkInAllowedFrom && now <= checkInAllowedUntil;
+    return now >= checkInAllowedFrom && now <= shiftEnd;
   };
 
-  // Kiểm tra ca đã quá thời gian check-in (sau 5 phút so với giờ bắt đầu)
+  // Kiểm tra ca đã quá thời gian hết ca (nghỉ)
   const isMissedCheckIn = (shift: any) => {
     const assignment = getMyAssignment(shift);
     if (assignment?.status !== 'CONFIRMED') return false;
     
     const now = new Date();
-    const shiftStart = new Date(shift.startDatetime);
-    const checkInDeadline = new Date(shiftStart.getTime() + 5 * 60 * 1000); // Sau 5 phút
+    const shiftEnd = new Date(shift.endDatetime);
     
-    // Ca đã quá thời gian check-in và chưa được check-in
+    // Ca đã quá thời gian hết ca và chưa được check-in
     const isCheckedIn = checkedInShiftIds.includes(shift.id) || currentCheckIn?.shiftId === shift.id;
     const isCheckedOut = checkedOutShiftIds.includes(shift.id);
     
-    return now > checkInDeadline && !isCheckedIn && !isCheckedOut;
+    return now > shiftEnd && !isCheckedIn && !isCheckedOut;
+  };
+
+  // Kiểm tra ca đã check-in nhưng đi muộn (sau 5 phút nhưng trước hết ca)
+  const isLateCheckIn = (shift: any) => {
+    if (!currentCheckIn || currentCheckIn.shiftId !== shift.id) return false;
+    
+    const shiftStart = new Date(shift.startDatetime);
+    const checkInTime = new Date(currentCheckIn.checkIn);
+    const lateThreshold = new Date(shiftStart.getTime() + 5 * 60 * 1000); // Sau 5 phút
+    
+    return checkInTime > lateThreshold;
   };
 
   // Kiểm tra đang check-in ca này không
@@ -231,6 +241,7 @@ const MyShifts: React.FC = () => {
           const isCheckedOut = checkedOutShiftIds.includes(shift.id);
           const isCheckedIn = checkedInShiftIds.includes(shift.id) || currentCheckIn?.shiftId === shift.id;
           const missedCheckIn = isMissedCheckIn(shift);
+          const isLate = isLateCheckIn(shift);
           const checkInAvailable = canCheckIn(shift) && !currentCheckIn && !isCheckedOut && !isCheckedIn && !missedCheckIn;
           
           // Ẩn ca đang active (đã hiển thị ở trên)
@@ -252,10 +263,19 @@ const MyShifts: React.FC = () => {
                     </span>
                   )}
                   {isCheckedIn && !isCheckedOut && (
-                    <span className="badge bg-warning text-dark">
-                      <i className="bi bi-hourglass-split me-1"></i>
-                      Đang làm
-                    </span>
+                    <>
+                      {isLate ? (
+                        <span className="badge bg-warning text-dark">
+                          <i className="bi bi-exclamation-triangle me-1"></i>
+                          Đi muộn
+                        </span>
+                      ) : (
+                        <span className="badge bg-warning text-dark">
+                          <i className="bi bi-hourglass-split me-1"></i>
+                          Đang làm
+                        </span>
+                      )}
+                    </>
                   )}
                   {missedCheckIn && (
                     <span className="badge bg-danger">

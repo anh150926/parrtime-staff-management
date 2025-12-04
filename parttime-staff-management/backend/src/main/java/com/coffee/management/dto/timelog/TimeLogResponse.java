@@ -26,6 +26,7 @@ public class TimeLogResponse {
     private String durationFormatted;
     private RecordedBy recordedBy;
     private LocalDateTime createdAt;
+    private Boolean isLate; // Đánh dấu đi muộn (check-in sau 5 phút nhưng trước hết ca)
     
     public static TimeLogResponse fromEntity(TimeLog timeLog) {
         String durationFormatted = null;
@@ -33,6 +34,15 @@ public class TimeLogResponse {
             int hours = timeLog.getDurationMinutes() / 60;
             int minutes = timeLog.getDurationMinutes() % 60;
             durationFormatted = String.format("%dh %dm", hours, minutes);
+        }
+        
+        // Tính toán isLate: check-in sau 5 phút so với giờ bắt đầu ca nhưng trước hết ca
+        Boolean isLate = null;
+        if (timeLog.getShift() != null && timeLog.getCheckIn() != null) {
+            LocalDateTime shiftStart = timeLog.getShift().getStartDatetime();
+            LocalDateTime shiftEnd = timeLog.getShift().getEndDatetime();
+            LocalDateTime lateThreshold = shiftStart.plusMinutes(5);
+            isLate = timeLog.getCheckIn().isAfter(lateThreshold) && timeLog.getCheckIn().isBefore(shiftEnd);
         }
         
         return TimeLogResponse.builder()
@@ -47,6 +57,7 @@ public class TimeLogResponse {
                 .durationFormatted(durationFormatted)
                 .recordedBy(timeLog.getRecordedBy())
                 .createdAt(timeLog.getCreatedAt())
+                .isLate(isLate)
                 .build();
     }
 }

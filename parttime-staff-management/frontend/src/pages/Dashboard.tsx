@@ -197,15 +197,25 @@ const Dashboard: React.FC = () => {
     return now < allowedFrom;
   };
 
-  // Lọc ca làm đã xác nhận của nhân viên (chỉ hiển thị ca chưa đến giờ check-in)
+  // Kiểm tra ca đã quá thời gian hết ca (nghỉ)
+  const isMissedCheckIn = (shift: any) => {
+    const now = new Date();
+    const shiftEnd = new Date(shift.endDatetime);
+    // Ca đã quá thời gian hết ca và chưa được check-in
+    const isCheckedIn = checkedInShiftIds.includes(shift.id) || currentCheckIn?.shiftId === shift.id;
+    const isCheckedOut = checkedOutShiftIds.includes(shift.id);
+    return now > shiftEnd && !isCheckedIn && !isCheckedOut;
+  };
+
+  // Lọc ca làm đã xác nhận của nhân viên (chỉ hiển thị ca chưa check-in, chưa bị đánh dấu nghỉ)
   const confirmedShifts = myShifts.filter((shift: any) => {
     const myAssignment = shift.assignments?.find((a: any) => a.userId === user?.id);
     const isConfirmed = myAssignment?.status === 'CONFIRMED';
     const isCheckedOut = checkedOutShiftIds.includes(shift.id);
     const isCheckedIn = checkedInShiftIds.includes(shift.id) || currentCheckIn?.shiftId === shift.id;
-    const notYetTime = isNotYetCheckInTime(shift);
-    // Chỉ hiển thị ca chưa đến giờ check-in, chưa check-in, chưa check-out
-    return isConfirmed && !isCheckedOut && !isCheckedIn && notYetTime;
+    const isMissed = isMissedCheckIn(shift);
+    // Hiển thị ca đã xác nhận, chưa check-in, chưa check-out, chưa bị đánh dấu nghỉ
+    return isConfirmed && !isCheckedOut && !isCheckedIn && !isMissed;
   });
 
   // Lọc ca làm hôm nay (đã xác nhận, chưa check-out, chưa check-in) để chấm công
@@ -220,21 +230,13 @@ const Dashboard: React.FC = () => {
     return isConfirmed && !isCheckedOut && !isCheckedIn && isToday;
   });
 
-  // Kiểm tra ca có thể check-in không (trước 10 phút và sau 5 phút)
+  // Kiểm tra ca có thể check-in không (từ trước 10 phút đến hết giờ làm việc)
   const canCheckInShift = (shift: any) => {
     const now = new Date();
     const shiftStart = new Date(shift.startDatetime);
+    const shiftEnd = new Date(shift.endDatetime);
     const allowedFrom = new Date(shiftStart.getTime() - 10 * 60 * 1000);
-    const allowedUntil = new Date(shiftStart.getTime() + 5 * 60 * 1000);
-    return now >= allowedFrom && now <= allowedUntil;
-  };
-
-  // Kiểm tra ca đã quá thời gian check-in (sau 5 phút so với giờ bắt đầu)
-  const isMissedCheckIn = (shift: any) => {
-    const now = new Date();
-    const shiftStart = new Date(shift.startDatetime);
-    const checkInDeadline = new Date(shiftStart.getTime() + 5 * 60 * 1000); // Sau 5 phút
-    return now > checkInDeadline;
+    return now >= allowedFrom && now <= shiftEnd;
   };
 
   // Lọc ca làm hôm nay, loại bỏ ca đã quá thời gian check-in
