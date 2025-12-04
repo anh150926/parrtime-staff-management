@@ -15,6 +15,7 @@ import ConfirmModal from "../components/ConfirmModal";
 import { formatDateTime } from "../utils/formatters";
 import {
   CreateTaskRequest,
+  Task,
   TaskPriority,
   TaskStatus,
 } from "../api/taskService";
@@ -214,7 +215,28 @@ const CreateTaskForStaff: React.FC = () => {
     return badges[status] || badges.PENDING;
   };
 
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  // Helper function để tính isOverdue dựa trên thời gian client
+  const checkOverdue = (task: Task): boolean => {
+    if (!task.dueDate) return false;
+    const dueDate = new Date(task.dueDate);
+    const now = new Date();
+    if (task.status === "COMPLETED") {
+      // Task đã hoàn thành - kiểm tra có hoàn thành trễ không
+      if (task.completedAt) {
+        return new Date(task.completedAt) > dueDate;
+      }
+      return false;
+    }
+    // Task chưa hoàn thành - kiểm tra đã quá hạn chưa
+    return dueDate < now;
+  };
+
+  // Cập nhật isOverdue cho mỗi task dựa trên thời gian client
+  const safeTasks = (Array.isArray(tasks) ? tasks : []).map((task) => ({
+    ...task,
+    isOverdue: checkOverdue(task),
+  }));
+
   const filteredTasks = safeTasks.filter((task) => {
     if (filterStatus && task.status !== filterStatus) return false;
     return true;
@@ -552,7 +574,7 @@ const CreateTaskForStaff: React.FC = () => {
               <div className="col-6 col-md-3">
                 <div className="stat-card primary">
                   <div className="stat-value">
-                    {safeTasks.filter((t) => t.status === "PENDING").length}
+                    {safeTasks.filter((t) => t.status === "PENDING" && !t.isOverdue).length}
                   </div>
                   <div className="stat-label">Chờ xử lý</div>
                 </div>
@@ -560,7 +582,7 @@ const CreateTaskForStaff: React.FC = () => {
               <div className="col-6 col-md-3">
                 <div className="stat-card warning">
                   <div className="stat-value">
-                    {safeTasks.filter((t) => t.status === "IN_PROGRESS").length}
+                    {safeTasks.filter((t) => t.status === "IN_PROGRESS" && !t.isOverdue).length}
                   </div>
                   <div className="stat-label">Đang làm</div>
                 </div>
@@ -568,7 +590,7 @@ const CreateTaskForStaff: React.FC = () => {
               <div className="col-6 col-md-3">
                 <div className="stat-card success">
                   <div className="stat-value">
-                    {safeTasks.filter((t) => t.status === "COMPLETED").length}
+                    {safeTasks.filter((t) => t.status === "COMPLETED" && !t.isOverdue).length}
                   </div>
                   <div className="stat-label">Hoàn thành</div>
                 </div>

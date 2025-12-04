@@ -53,6 +53,22 @@ const Tasks: React.FC = () => {
   }>({ show: false, message: "", type: "success" });
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [editFormData, setEditFormData] = useState<{
+    title: string;
+    description: string;
+    priority: TaskPriority;
+    assignedToId?: number;
+    dueDate: string;
+    notes: string;
+  }>({
+    title: "",
+    description: "",
+    priority: "MEDIUM",
+    assignedToId: undefined,
+    dueDate: "",
+    notes: "",
+  });
 
   const isStaff = user?.role === "STAFF";
   const isManager = user?.role === "MANAGER";
@@ -185,6 +201,58 @@ const Tasks: React.FC = () => {
     setConfirmDelete(null);
   };
 
+  const handleOpenEditModal = (task: Task) => {
+    setEditTask(task);
+    setEditFormData({
+      title: task.title,
+      description: task.description || "",
+      priority: task.priority,
+      assignedToId: task.assignedToId || undefined,
+      dueDate: task.dueDate ? task.dueDate.slice(0, 16) : "",
+      notes: task.notes || "",
+    });
+  };
+
+  const handleUpdateTaskSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTask) return;
+
+    try {
+      if (!editFormData.title.trim()) {
+        setToast({
+          show: true,
+          message: "Vui lòng nhập tiêu đề!",
+          type: "error",
+        });
+        return;
+      }
+      await dispatch(
+        updateTask({
+          id: editTask.id,
+          data: {
+            title: editFormData.title,
+            description: editFormData.description || undefined,
+            priority: editFormData.priority,
+            assignedToId: editFormData.assignedToId || undefined,
+            dueDate: editFormData.dueDate || undefined,
+            notes: editFormData.notes || undefined,
+          },
+        })
+      ).unwrap();
+      setToast({
+        show: true,
+        message: "Cập nhật nhiệm vụ thành công!",
+        type: "success",
+      });
+      setEditTask(null);
+      if (selectedStoreId) {
+        dispatch(fetchTasksByStore(selectedStoreId));
+      }
+    } catch (err: any) {
+      setToast({ show: true, message: err || "Có lỗi xảy ra!", type: "error" });
+    }
+  };
+
   const getPriorityBadge = (priority: TaskPriority) => {
     const badges: Record<TaskPriority, { class: string; label: string }> = {
       LOW: { class: "bg-secondary", label: "Thấp" },
@@ -205,7 +273,28 @@ const Tasks: React.FC = () => {
     return badges[status];
   };
 
-  const displayTasks = isStaff ? safeMyTasks : safeTasks;
+  // Helper function để tính isOverdue dựa trên thời gian client
+  const checkOverdue = (task: Task): boolean => {
+    if (!task.dueDate) return false;
+    const dueDate = new Date(task.dueDate);
+    const now = new Date();
+    if (task.status === "COMPLETED") {
+      // Task đã hoàn thành - kiểm tra có hoàn thành trễ không
+      if (task.completedAt) {
+        return new Date(task.completedAt) > dueDate;
+      }
+      return false;
+    }
+    // Task chưa hoàn thành - kiểm tra đã quá hạn chưa
+    return dueDate < now;
+  };
+
+  // Cập nhật isOverdue cho mỗi task dựa trên thời gian client
+  const displayTasks = (isStaff ? safeMyTasks : safeTasks).map((task) => ({
+    ...task,
+    isOverdue: checkOverdue(task),
+  }));
+
   const filteredTasks = displayTasks.filter((task) => {
     if (filterStatus && task.status !== filterStatus) return false;
     if (filterPriority && task.priority !== filterPriority) return false;
@@ -361,6 +450,17 @@ const Tasks: React.FC = () => {
                           Xem chi tiết
                         </button>
                       </li>
+                      {(isManager || isOwner) && task.status !== "COMPLETED" && (
+                        <li>
+                          <button
+                            className="dropdown-item"
+                            onClick={() => handleOpenEditModal(task)}
+                          >
+                            <i className="bi bi-pencil me-2"></i>
+                            Sửa
+                          </button>
+                        </li>
+                      )}
                       {(isManager || isOwner) && (
                         <li>
                           <button
@@ -442,9 +542,10 @@ const Tasks: React.FC = () => {
                   )}
 
                 {task.status === "COMPLETED" && task.completedAt && (
-                  <p className="small text-success mb-0 mt-2">
-                    <i className="bi bi-check-circle me-1"></i>
-                    Hoàn thành: {formatDateTime(task.completedAt)}
+                  <p className={`small mb-0 mt-2 ${task.isOverdue ? "text-danger" : "text-success"}`}>
+                    <i className={`bi ${task.isOverdue ? "bi-exclamation-circle" : "bi-check-circle"} me-1`}></i>
+                    {task.isOverdue ? "Hoàn thành trễ: " : "Hoàn thành: "}
+                    {formatDateTime(task.completedAt)}
                   </p>
                 )}
               </div>
@@ -530,6 +631,131 @@ const Tasks: React.FC = () => {
                     Đóng
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop show"></div>
+        </>
+      )}
+
+      {/* Edit modal */}
+      {editTask && (
+        <>
+          <div className="modal show d-block" tabIndex={-1}>
+            <div className="modal-dialog modal-lg">
+              <div className="modal-content modal-coffee">
+                <div className="modal-header">
+                  <h5 className="modal-title">Sửa nhiệm vụ</h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setEditTask(null)}
+                  ></button>
+                </div>
+                <form onSubmit={handleUpdateTaskSubmit}>
+                  <div className="modal-body">
+                    <div className="mb-3">
+                      <label className="form-label">
+                        Tiêu đề <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.title}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, title: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Mô tả</label>
+                      <textarea
+                        className="form-control"
+                        rows={3}
+                        value={editFormData.description}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, description: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="row">
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Độ ưu tiên</label>
+                        <select
+                          className="form-select"
+                          value={editFormData.priority}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              priority: e.target.value as TaskPriority,
+                            })
+                          }
+                        >
+                          <option value="LOW">Thấp</option>
+                          <option value="MEDIUM">Trung bình</option>
+                          <option value="HIGH">Cao</option>
+                          <option value="URGENT">Khẩn cấp</option>
+                        </select>
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Hạn hoàn thành</label>
+                        <input
+                          type="datetime-local"
+                          className="form-control"
+                          value={editFormData.dueDate}
+                          onChange={(e) =>
+                            setEditFormData({ ...editFormData, dueDate: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Giao cho</label>
+                      <select
+                        className="form-select"
+                        value={editFormData.assignedToId || ""}
+                        onChange={(e) =>
+                          setEditFormData({
+                            ...editFormData,
+                            assignedToId: e.target.value ? Number(e.target.value) : undefined,
+                          })
+                        }
+                      >
+                        <option value="">Tất cả nhân viên</option>
+                        {storeStaff.map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Ghi chú</label>
+                      <textarea
+                        className="form-control"
+                        rows={2}
+                        value={editFormData.notes}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, notes: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setEditTask(null)}
+                    >
+                      Hủy
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      <i className="bi bi-check-lg me-1"></i>
+                      Lưu thay đổi
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

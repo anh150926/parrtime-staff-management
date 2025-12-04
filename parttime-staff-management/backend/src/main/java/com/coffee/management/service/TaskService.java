@@ -256,6 +256,11 @@ public class TaskService {
             throw new BadRequestException("Only pending tasks can be started");
         }
 
+        // Check if task is overdue
+        if (task.getDueDate() != null && task.getDueDate().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Cannot start an overdue task");
+        }
+
         task.setStatus(TaskStatus.IN_PROGRESS);
         
         // If task was assigned to all staff, now assign to the one who started it
