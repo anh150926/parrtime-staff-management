@@ -3,6 +3,7 @@ import payrollService, { Payroll, UpdatePayrollRequest } from '../../api/payroll
 
 interface PayrollState {
   payrolls: Payroll[];
+  myPayrollHistory: Payroll[];
   selectedPayroll: Payroll | null;
   loading: boolean;
   error: string | null;
@@ -10,6 +11,7 @@ interface PayrollState {
 
 const initialState: PayrollState = {
   payrolls: [],
+  myPayrollHistory: [],
   selectedPayroll: null,
   loading: false,
   error: null,
@@ -63,6 +65,42 @@ export const updatePayroll = createAsyncThunk(
   }
 );
 
+export const fetchMyPayrollHistory = createAsyncThunk(
+  'payroll/fetchMyHistory',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await payrollService.getMyHistory();
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch payroll history');
+    }
+  }
+);
+
+export const batchApprovePayrolls = createAsyncThunk(
+  'payroll/batchApprove',
+  async (ids: number[], { rejectWithValue }) => {
+    try {
+      const response = await payrollService.batchApprove(ids);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to batch approve payrolls');
+    }
+  }
+);
+
+export const batchMarkPaidPayrolls = createAsyncThunk(
+  'payroll/batchMarkPaid',
+  async (ids: number[], { rejectWithValue }) => {
+    try {
+      const response = await payrollService.batchMarkPaid(ids);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to batch mark payrolls as paid');
+    }
+  }
+);
+
 const payrollSlice = createSlice({
   name: 'payroll',
   initialState,
@@ -70,9 +108,16 @@ const payrollSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    setSelectedPayroll: (state, action) => {
+      state.selectedPayroll = action.payload;
+    },
+    clearSelectedPayroll: (state) => {
+      state.selectedPayroll = null;
+    },
   },
   extraReducers: (builder) => {
     builder
+      // Generate payroll
       .addCase(generatePayroll.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -85,33 +130,97 @@ const payrollSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      // Fetch by month
       .addCase(fetchPayrollsByMonth.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchPayrollsByMonth.fulfilled, (state, action) => {
         state.loading = false;
         state.payrolls = action.payload;
       })
+      .addCase(fetchPayrollsByMonth.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch by store and month
+      .addCase(fetchPayrollsByStoreAndMonth.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchPayrollsByStoreAndMonth.fulfilled, (state, action) => {
         state.loading = false;
         state.payrolls = action.payload;
       })
+      .addCase(fetchPayrollsByStoreAndMonth.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update payroll
+      .addCase(updatePayroll.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(updatePayroll.fulfilled, (state, action) => {
+        state.loading = false;
         const index = state.payrolls.findIndex((p) => p.id === action.payload.id);
         if (index !== -1) {
           state.payrolls[index] = action.payload;
         }
+      })
+      .addCase(updatePayroll.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch my history
+      .addCase(fetchMyPayrollHistory.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMyPayrollHistory.fulfilled, (state, action) => {
+        state.loading = false;
+        state.myPayrollHistory = action.payload;
+      })
+      .addCase(fetchMyPayrollHistory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Batch approve
+      .addCase(batchApprovePayrolls.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(batchApprovePayrolls.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update statuses in current payrolls
+        action.payload.forEach((updated) => {
+          const index = state.payrolls.findIndex((p) => p.id === updated.id);
+          if (index !== -1) {
+            state.payrolls[index] = updated;
+          }
+        });
+      })
+      .addCase(batchApprovePayrolls.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Batch mark paid
+      .addCase(batchMarkPaidPayrolls.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(batchMarkPaidPayrolls.fulfilled, (state, action) => {
+        state.loading = false;
+        action.payload.forEach((updated) => {
+          const index = state.payrolls.findIndex((p) => p.id === updated.id);
+          if (index !== -1) {
+            state.payrolls[index] = updated;
+          }
+        });
+      })
+      .addCase(batchMarkPaidPayrolls.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { clearError } = payrollSlice.actions;
+export const { clearError, setSelectedPayroll, clearSelectedPayroll } = payrollSlice.actions;
 export default payrollSlice.reducer;
-
-
-
-
-
-
-
-

@@ -2,16 +2,10 @@ package com.coffee.management.service;
 
 import com.coffee.management.dto.payroll.PayrollResponse;
 import com.coffee.management.dto.payroll.UpdatePayrollRequest;
-import com.coffee.management.entity.Payroll;
-import com.coffee.management.entity.PayrollStatus;
-import com.coffee.management.entity.Role;
-import com.coffee.management.entity.User;
-import com.coffee.management.exception.BadRequestException;
+import com.coffee.management.entity.*;
 import com.coffee.management.exception.ForbiddenException;
 import com.coffee.management.exception.ResourceNotFoundException;
-import com.coffee.management.repository.PayrollRepository;
-import com.coffee.management.repository.TimeLogRepository;
-import com.coffee.management.repository.UserRepository;
+import com.coffee.management.repository.*;
 import com.coffee.management.security.UserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +16,8 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,9 +38,17 @@ public class PayrollService {
     private TimeLogRepository timeLogRepository;
 
     @Autowired
+    private ComplaintRepository complaintRepository;
+
+    @Autowired
     private AuditService auditService;
 
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM");
+    
+    // Cấu hình khấu trừ - có thể chuyển vào application.yml sau
+    private static final BigDecimal LATE_PENALTY_PER_OCCURRENCE = new BigDecimal("10000"); // 10.000 VNĐ mỗi lần đi muộn
+    private static final int LATE_THRESHOLD_MINUTES = 15; // Trễ > 15 phút tính là đi muộn
+    private static final BigDecimal COMPLAINT_PENALTY = new BigDecimal("50000"); // 50.000 VNĐ mỗi khiếu nại xác nhận
 
     /**
      * Generate payroll for a month
@@ -90,6 +94,9 @@ public class PayrollService {
         BigDecimal hourlyRate = user.getHourlyRate() != null ? user.getHourlyRate() : BigDecimal.ZERO;
         BigDecimal grossPay = totalHours.multiply(hourlyRate);
 
+        // Calculate auto-deductions
+        DeductionResult deductions = calculateAutoDeductions(user, startDate, endDate);
+
         Payroll payroll;
         if (existingPayroll != null) {
             // Update existing payroll if it's still draft
@@ -98,6 +105,14 @@ public class PayrollService {
             }
             existingPayroll.setTotalHours(totalHours);
             existingPayroll.setGrossPay(grossPay);
+            
+            // Update adjustments with auto-deductions if no manual adjustment was made
+            if (existingPayroll.getAdjustmentNote() == null || existingPayroll.getAdjustmentNote().isEmpty() ||
+                existingPayroll.getAdjustmentNote().startsWith("[Tự động]")) {
+                existingPayroll.setAdjustments(deductions.totalDeduction.negate());
+                existingPayroll.setAdjustmentNote(deductions.note);
+            }
+            
             payroll = payrollRepository.save(existingPayroll);
         } else {
             payroll = Payroll.builder()
@@ -105,13 +120,79 @@ public class PayrollService {
                     .month(month)
                     .totalHours(totalHours)
                     .grossPay(grossPay)
-                    .adjustments(BigDecimal.ZERO)
+                    .adjustments(deductions.totalDeduction.negate())
+                    .adjustmentNote(deductions.note)
                     .status(PayrollStatus.DRAFT)
                     .build();
             payroll = payrollRepository.save(payroll);
         }
 
         return PayrollResponse.fromEntity(payroll);
+    }
+
+    /**
+     * Calculate auto-deductions from late check-ins and complaints
+     */
+    private DeductionResult calculateAutoDeductions(User user, LocalDateTime startDate, LocalDateTime endDate) {
+        BigDecimal totalDeduction = BigDecimal.ZERO;
+        List<String> deductionNotes = new ArrayList<>();
+
+        // 1. Calculate late check-in penalties
+        List<TimeLog> timeLogsWithShift = timeLogRepository.findByUserIdAndDateRangeWithShift(
+                user.getId(), startDate, endDate);
+        
+        int lateCount = 0;
+        for (TimeLog timeLog : timeLogsWithShift) {
+            if (timeLog.getShift() != null && timeLog.getCheckIn() != null) {
+                LocalDateTime shiftStart = timeLog.getShift().getStartDatetime();
+                long minutesLate = ChronoUnit.MINUTES.between(shiftStart, timeLog.getCheckIn());
+                
+                if (minutesLate > LATE_THRESHOLD_MINUTES) {
+                    lateCount++;
+                }
+            }
+        }
+        
+        if (lateCount > 0) {
+            BigDecimal latePenalty = LATE_PENALTY_PER_OCCURRENCE.multiply(BigDecimal.valueOf(lateCount));
+            totalDeduction = totalDeduction.add(latePenalty);
+            deductionNotes.add(String.format("Đi muộn %d lần (-%s)", lateCount, formatCurrency(latePenalty)));
+        }
+
+        // 2. Calculate complaint penalties
+        long complaintCount = complaintRepository.countResolvedComplaintsAgainstUser(
+                user.getId(), startDate, endDate);
+        
+        if (complaintCount > 0) {
+            BigDecimal complaintPenalty = COMPLAINT_PENALTY.multiply(BigDecimal.valueOf(complaintCount));
+            totalDeduction = totalDeduction.add(complaintPenalty);
+            deductionNotes.add(String.format("Khiếu nại bị xác nhận %d vụ (-%s)", complaintCount, formatCurrency(complaintPenalty)));
+        }
+
+        // Build final note
+        String finalNote = "";
+        if (!deductionNotes.isEmpty()) {
+            finalNote = "[Tự động] " + String.join("; ", deductionNotes);
+        }
+
+        return new DeductionResult(totalDeduction, finalNote);
+    }
+
+    private String formatCurrency(BigDecimal amount) {
+        return String.format("%,.0f VNĐ", amount);
+    }
+
+    /**
+     * Helper class to hold deduction calculation results
+     */
+    private static class DeductionResult {
+        BigDecimal totalDeduction;
+        String note;
+
+        DeductionResult(BigDecimal totalDeduction, String note) {
+            this.totalDeduction = totalDeduction;
+            this.note = note;
+        }
     }
 
     /**
@@ -186,6 +267,11 @@ public class PayrollService {
                     "Approved payroll for user: " + payroll.getUser().getUsername() + " - " + payroll.getMonth());
         }
 
+        if (request.getStatus() == PayrollStatus.PAID) {
+            auditService.log(currentUser.getId(), "PAID", "PAYROLL", id,
+                    "Marked payroll as paid for user: " + payroll.getUser().getUsername() + " - " + payroll.getMonth());
+        }
+
         return PayrollResponse.fromEntity(updated);
     }
 
@@ -204,12 +290,64 @@ public class PayrollService {
         BigDecimal total = payrollRepository.sumTotalPayByStoreAndMonth(storeId, month);
         return total != null ? total : BigDecimal.ZERO;
     }
+
+    /**
+     * Get payroll history for a user (for staff to view their own payrolls)
+     */
+    public List<PayrollResponse> getPayrollHistoryForUser(Long userId, UserPrincipal currentUser) {
+        // Staff can only view their own payroll history
+        if (!currentUser.getRole().equals("OWNER") && !currentUser.getRole().equals("MANAGER")) {
+            if (!currentUser.getId().equals(userId)) {
+                throw new ForbiddenException("You can only view your own payroll history");
+            }
+        }
+
+        return payrollRepository.findByUserId(userId).stream()
+                .map(PayrollResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Batch approve payrolls
+     */
+    public List<PayrollResponse> batchApprovePayrolls(List<Long> ids, UserPrincipal currentUser) {
+        if (!currentUser.getRole().equals("OWNER")) {
+            throw new ForbiddenException("Only owner can approve payrolls");
+        }
+
+        List<PayrollResponse> results = new ArrayList<>();
+        for (Long id : ids) {
+            Payroll payroll = payrollRepository.findById(id).orElse(null);
+            if (payroll != null && payroll.getStatus() == PayrollStatus.DRAFT) {
+                payroll.setStatus(PayrollStatus.APPROVED);
+                payrollRepository.save(payroll);
+                auditService.log(currentUser.getId(), "APPROVE", "PAYROLL", id,
+                        "Batch approved payroll for user: " + payroll.getUser().getUsername() + " - " + payroll.getMonth());
+                results.add(PayrollResponse.fromEntity(payroll));
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Batch mark payrolls as paid
+     */
+    public List<PayrollResponse> batchMarkPaid(List<Long> ids, UserPrincipal currentUser) {
+        if (!currentUser.getRole().equals("OWNER")) {
+            throw new ForbiddenException("Only owner can mark payrolls as paid");
+        }
+
+        List<PayrollResponse> results = new ArrayList<>();
+        for (Long id : ids) {
+            Payroll payroll = payrollRepository.findById(id).orElse(null);
+            if (payroll != null && payroll.getStatus() == PayrollStatus.APPROVED) {
+                payroll.setStatus(PayrollStatus.PAID);
+                payrollRepository.save(payroll);
+                auditService.log(currentUser.getId(), "PAID", "PAYROLL", id,
+                        "Batch marked payroll as paid for user: " + payroll.getUser().getUsername() + " - " + payroll.getMonth());
+                results.add(PayrollResponse.fromEntity(payroll));
+            }
+        }
+        return results;
+    }
 }
-
-
-
-
-
-
-
-

@@ -48,6 +48,23 @@ public class PayrollController {
         return ResponseEntity.ok(ApiResponse.success(payroll));
     }
 
+    @GetMapping("/user/{userId}/history")
+    @Operation(summary = "Get payroll history for a user")
+    public ResponseEntity<ApiResponse<List<PayrollResponse>>> getPayrollHistory(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        List<PayrollResponse> payrolls = payrollService.getPayrollHistoryForUser(userId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(payrolls));
+    }
+
+    @GetMapping("/my-history")
+    @Operation(summary = "Get current user's payroll history")
+    public ResponseEntity<ApiResponse<List<PayrollResponse>>> getMyPayrollHistory(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        List<PayrollResponse> payrolls = payrollService.getPayrollHistoryForUser(currentUser.getId(), currentUser);
+        return ResponseEntity.ok(ApiResponse.success(payrolls));
+    }
+
     @GetMapping("/store/{storeId}")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     @Operation(summary = "Get payrolls by store and month")
@@ -78,12 +95,24 @@ public class PayrollController {
         PayrollResponse payroll = payrollService.updatePayroll(id, request, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Payroll updated successfully", payroll));
     }
+
+    @PostMapping("/batch-approve")
+    @PreAuthorize("hasRole('OWNER')")
+    @Operation(summary = "Batch approve payrolls")
+    public ResponseEntity<ApiResponse<List<PayrollResponse>>> batchApprove(
+            @RequestBody List<Long> ids,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        List<PayrollResponse> payrolls = payrollService.batchApprovePayrolls(ids, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Payrolls approved successfully", payrolls));
+    }
+
+    @PostMapping("/batch-paid")
+    @PreAuthorize("hasRole('OWNER')")
+    @Operation(summary = "Batch mark payrolls as paid")
+    public ResponseEntity<ApiResponse<List<PayrollResponse>>> batchMarkPaid(
+            @RequestBody List<Long> ids,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        List<PayrollResponse> payrolls = payrollService.batchMarkPaid(ids, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Payrolls marked as paid successfully", payrolls));
+    }
 }
-
-
-
-
-
-
-
-

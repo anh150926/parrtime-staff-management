@@ -36,6 +36,26 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     // Find pending complaints (for Owner)
     @Query("SELECT c FROM Complaint c WHERE c.status IN ('PENDING', 'IN_PROGRESS') ORDER BY c.createdAt DESC")
     List<Complaint> findAllPending();
+
+    // Find resolved complaints against a user within a date range (for payroll deductions)
+    @Query("SELECT c FROM Complaint c WHERE c.toUser.id = :userId " +
+           "AND c.status = 'RESOLVED' " +
+           "AND c.createdAt >= :startDate " +
+           "AND c.createdAt <= :endDate")
+    List<Complaint> findResolvedComplaintsAgainstUser(
+            @Param("userId") Long userId,
+            @Param("startDate") java.time.LocalDateTime startDate,
+            @Param("endDate") java.time.LocalDateTime endDate);
+
+    // Count resolved complaints against a user within a date range
+    @Query("SELECT COUNT(c) FROM Complaint c WHERE c.toUser.id = :userId " +
+           "AND c.status = 'RESOLVED' " +
+           "AND c.createdAt >= :startDate " +
+           "AND c.createdAt <= :endDate")
+    long countResolvedComplaintsAgainstUser(
+            @Param("userId") Long userId,
+            @Param("startDate") java.time.LocalDateTime startDate,
+            @Param("endDate") java.time.LocalDateTime endDate);
 }
 
 

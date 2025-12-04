@@ -52,6 +52,18 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
             @Param("userId") Long userId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    // For payroll - find time logs with associated shifts (to check late check-ins)
+    @Query("SELECT t FROM TimeLog t " +
+           "JOIN FETCH t.shift s " +
+           "WHERE t.user.id = :userId " +
+           "AND t.checkIn >= :startDate " +
+           "AND t.checkIn <= :endDate " +
+           "AND t.shift IS NOT NULL")
+    List<TimeLog> findByUserIdAndDateRangeWithShift(
+            @Param("userId") Long userId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 }
 
 

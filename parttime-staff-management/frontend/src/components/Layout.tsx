@@ -251,6 +251,18 @@ const Layout: React.FC = () => {
             </NavLink>
           )}
 
+          {/* Staff can see their own payroll */}
+          {user?.role === "STAFF" && (
+            <NavLink
+              to="/my-payroll"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <i className="bi bi-wallet2"></i>
+              Lương của tôi
+            </NavLink>
+          )}
+
           {/* Owner can see Reports */}
           {user?.role === "OWNER" && (
             <NavLink

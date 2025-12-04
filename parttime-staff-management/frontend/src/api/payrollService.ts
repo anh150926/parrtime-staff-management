@@ -53,14 +53,27 @@ const payrollService = {
     const response = await api.put<ApiResponse<Payroll>>(`/payrolls/${id}`, data);
     return response.data;
   },
+
+  // New API methods
+  getMyHistory: async (): Promise<ApiResponse<Payroll[]>> => {
+    const response = await api.get<ApiResponse<Payroll[]>>('/payrolls/my-history');
+    return response.data;
+  },
+
+  getUserHistory: async (userId: number): Promise<ApiResponse<Payroll[]>> => {
+    const response = await api.get<ApiResponse<Payroll[]>>(`/payrolls/user/${userId}/history`);
+    return response.data;
+  },
+
+  batchApprove: async (ids: number[]): Promise<ApiResponse<Payroll[]>> => {
+    const response = await api.post<ApiResponse<Payroll[]>>('/payrolls/batch-approve', ids);
+    return response.data;
+  },
+
+  batchMarkPaid: async (ids: number[]): Promise<ApiResponse<Payroll[]>> => {
+    const response = await api.post<ApiResponse<Payroll[]>>('/payrolls/batch-paid', ids);
+    return response.data;
+  },
 };
 
 export default payrollService;
-
-
-
-
-
-
-
-

@@ -11,6 +11,7 @@ import Shifts from "./pages/Shifts";
 import MyShifts from "./pages/MyShifts";
 import Requests from "./pages/Requests";
 import Payrolls from "./pages/Payrolls";
+import MyPayroll from "./pages/MyPayroll";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import Marketplace from "./pages/Marketplace";
@@ -46,6 +47,7 @@ const App: React.FC = () => {
           />
           <Route path="/requests" element={<Requests />} />
           <Route path="/payrolls" element={<Payrolls />} />
+          <Route path="/my-payroll" element={<MyPayroll />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/complaints" element={<Complaints />} />
