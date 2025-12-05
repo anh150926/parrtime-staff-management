@@ -7,6 +7,7 @@ import {
   fetchTasksByStore,
   createTask,
   updateTask,
+  startTask,
   deleteTask,
 } from "../features/tasks/taskSlice";
 import Loading from "../components/Loading";
@@ -157,12 +158,7 @@ const CreateTaskForStaff: React.FC = () => {
 
   const handleStartTask = async (taskId: number) => {
     try {
-      await dispatch(
-        updateTask({
-          id: taskId,
-          data: { status: "IN_PROGRESS" },
-        })
-      ).unwrap();
+      await dispatch(startTask(taskId)).unwrap();
       setToast({
         show: true,
         message: "Đã bắt đầu làm nhiệm vụ!",
@@ -172,7 +168,7 @@ const CreateTaskForStaff: React.FC = () => {
         dispatch(fetchTasksByStore(selectedStoreId));
       }
     } catch (err: any) {
-      setToast({ show: true, message: err || "Có lỗi xảy ra!", type: "error" });
+      setToast({ show: true, message: err?.response?.data?.message || err?.message || err || "Có lỗi xảy ra!", type: "error" });
     }
   };
 

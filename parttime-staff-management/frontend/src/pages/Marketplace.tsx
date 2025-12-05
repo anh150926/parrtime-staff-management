@@ -101,6 +101,10 @@ const Marketplace: React.FC = () => {
       if (selectedStoreId) {
         dispatch(fetchAvailableListings(selectedStoreId));
       }
+      // Refresh myShifts để cập nhật số ca trong tuần (khi được duyệt)
+      if (isStaff) {
+        dispatch(fetchMyShifts());
+      }
     } catch (err: any) {
       setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });
     }
@@ -120,6 +124,10 @@ const Marketplace: React.FC = () => {
       if (selectedStoreId) {
         dispatch(fetchPendingApproval(selectedStoreId));
         dispatch(fetchAvailableListings(selectedStoreId));
+      }
+      // Refresh myShifts để cập nhật số ca trong tuần khi manager duyệt
+      if (isStaff && approve) {
+        dispatch(fetchMyShifts());
       }
     } catch (err: any) {
       setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });

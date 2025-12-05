@@ -207,6 +207,35 @@ const Dashboard: React.FC = () => {
     return now > shiftEnd && !isCheckedIn && !isCheckedOut;
   };
 
+  // Tính tổng số ca đã xác nhận trong tuần hiện tại (từ đầu tuần đến cuối tuần)
+  const getWeekStart = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    return new Date(d.setDate(diff));
+  };
+
+  const getWeekEnd = (date: Date) => {
+    const weekStart = getWeekStart(date);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    return weekEnd;
+  };
+
+  const weeklyConfirmedShifts = myShifts.filter((shift: any) => {
+    const myAssignment = shift.assignments?.find((a: any) => a.userId === user?.id);
+    const isConfirmed = myAssignment?.status === 'CONFIRMED';
+    if (!isConfirmed) return false;
+    
+    // Kiểm tra xem ca có nằm trong tuần hiện tại không
+    const shiftDate = new Date(shift.startDatetime);
+    const now = new Date();
+    const weekStart = getWeekStart(now);
+    const weekEnd = getWeekEnd(now);
+    return shiftDate >= weekStart && shiftDate <= weekEnd;
+  });
+
   // Lọc ca làm đã xác nhận của nhân viên (chỉ hiển thị ca chưa check-in, chưa bị đánh dấu nghỉ)
   const confirmedShifts = myShifts.filter((shift: any) => {
     const myAssignment = shift.assignments?.find((a: any) => a.userId === user?.id);
@@ -691,7 +720,7 @@ const Dashboard: React.FC = () => {
               <div className="stat-card primary">
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
-                    <div className="stat-value">{confirmedShifts.length}</div>
+                    <div className="stat-value">{weeklyConfirmedShifts.length}</div>
                     <div className="stat-label">Ca tuần này</div>
                   </div>
                   <i className="bi bi-calendar-check stat-icon"></i>

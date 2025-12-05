@@ -43,6 +43,9 @@ public class TaskService {
     @Autowired
     private AuditService auditService;
 
+    @Autowired
+    private com.coffee.management.repository.TimeLogRepository timeLogRepository;
+
     /**
      * Get tasks by store
      */
@@ -279,6 +282,11 @@ public class TaskService {
 
         // Validate staff can only start tasks assigned to them or general tasks (assignedToId = null)
         if (currentUser.getRole().equals("STAFF")) {
+            // Check if staff has checked in
+            if (timeLogRepository.findActiveCheckIn(currentUser.getId()).isEmpty()) {
+                throw new BadRequestException("Bạn phải check-in trước khi bắt đầu làm nhiệm vụ");
+            }
+            
             if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(currentUser.getId())) {
                 throw new ForbiddenException("You can only start tasks assigned to you");
             }

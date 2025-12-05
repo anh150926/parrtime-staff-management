@@ -64,6 +64,20 @@ public interface TimeLogRepository extends JpaRepository<TimeLog, Long> {
             @Param("userId") Long userId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+    
+    /**
+     * Find time logs that need auto check-out:
+     * - Have check-in but no check-out
+     * - Have associated shift
+     * - Shift end time has passed (we'll check +15 minutes in service)
+     */
+    @Query("SELECT t FROM TimeLog t " +
+           "JOIN FETCH t.shift s " +
+           "JOIN FETCH t.user u " +
+           "WHERE t.checkOut IS NULL " +
+           "AND t.shift IS NOT NULL " +
+           "AND s.endDatetime < :now")
+    List<TimeLog> findTimeLogsNeedingAutoCheckOut(@Param("now") LocalDateTime now);
 }
 
 

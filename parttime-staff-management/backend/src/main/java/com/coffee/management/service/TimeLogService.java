@@ -195,6 +195,59 @@ public class TimeLogService {
     }
 
     /**
+     * Auto check-out for a time log (used by scheduled task)
+     */
+    public void autoCheckOut(TimeLog timeLog) {
+        if (timeLog.getCheckOut() != null) {
+            return; // Already checked out
+        }
+
+        LocalDateTime checkOutTime = LocalDateTime.now();
+        timeLog.setCheckOut(checkOutTime);
+        
+        // Calculate duration
+        int durationMinutes = (int) ChronoUnit.MINUTES.between(timeLog.getCheckIn(), checkOutTime);
+        timeLog.setDurationMinutes(durationMinutes);
+        
+        // Mark as system recorded
+        timeLog.setRecordedBy(RecordedBy.SYSTEM);
+
+        TimeLog saved = timeLogRepository.save(timeLog);
+        
+        // Gửi thông báo cho nhân viên
+        if (saved.getShift() != null) {
+            String shiftTitle = saved.getShift().getTitle();
+            String checkOutTimeStr = saved.getCheckOut().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            notificationService.sendNotification(
+                saved.getUser().getId(),
+                "Tự động check-out",
+                String.format("Bạn đã được tự động check-out ca \"%s\" lúc %s (sau 15 phút kể từ khi ca kết thúc)", 
+                    shiftTitle, checkOutTimeStr),
+                "/my-shifts"
+            );
+        }
+        
+        // Gửi thông báo cho manager
+        if (saved.getUser().getStore() != null && saved.getShift() != null) {
+            List<User> managers = userRepository.findByStoreIdAndRole(
+                saved.getUser().getStore().getId(), Role.MANAGER);
+            String shiftTitle = saved.getShift().getTitle();
+            String checkOutTimeStr = saved.getCheckOut().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            String message = String.format("%s đã được tự động check-out ca \"%s\" lúc %s (quên check-out)", 
+                saved.getUser().getFullName(), shiftTitle, checkOutTimeStr);
+            
+            for (User manager : managers) {
+                notificationService.sendNotification(
+                    manager.getId(),
+                    "Nhân viên tự động check-out",
+                    message,
+                    "/time-logs"
+                );
+            }
+        }
+    }
+
+    /**
      * Get time logs for a store
      */
     public List<TimeLogResponse> getTimeLogsByStore(Long storeId, LocalDateTime startDate, LocalDateTime endDate, UserPrincipal currentUser) {

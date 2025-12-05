@@ -22,6 +22,7 @@ import {
   TaskPriority,
   TaskStatus,
 } from "../api/taskService";
+import timeLogService from "../api/timeLogService";
 
 const Tasks: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -69,6 +70,7 @@ const Tasks: React.FC = () => {
     dueDate: "",
     notes: "",
   });
+  const [currentCheckIn, setCurrentCheckIn] = useState<any>(null);
 
   const isStaff = user?.role === "STAFF";
   const isManager = user?.role === "MANAGER";
@@ -78,11 +80,22 @@ const Tasks: React.FC = () => {
     dispatch(fetchStores());
     if (isStaff) {
       dispatch(fetchMyTasks());
+      loadCurrentCheckIn();
     }
     if (isManager || isOwner) {
       dispatch(fetchUsers());
     }
   }, [dispatch, isStaff, isManager, isOwner]);
+
+  const loadCurrentCheckIn = async () => {
+    try {
+      const response = await timeLogService.getCurrentCheckIn();
+      setCurrentCheckIn(response.data);
+    } catch (error) {
+      console.error('Failed to load check-in status:', error);
+      setCurrentCheckIn(null);
+    }
+  };
 
   useEffect(() => {
     if (stores.length > 0 && !selectedStoreId && !isStaff) {
@@ -165,11 +178,13 @@ const Tasks: React.FC = () => {
       });
       if (isStaff) {
         dispatch(fetchMyTasks());
+        // Refresh check-in status
+        loadCurrentCheckIn();
       } else if (selectedStoreId) {
         dispatch(fetchTasksByStore(selectedStoreId));
       }
     } catch (err: any) {
-      setToast({ show: true, message: err || "Có lỗi xảy ra!", type: "error" });
+      setToast({ show: true, message: err?.response?.data?.message || err?.message || err || "Có lỗi xảy ra!", type: "error" });
     }
   };
 
@@ -523,13 +538,25 @@ const Tasks: React.FC = () => {
                   // Nếu giao cho người cụ thể, chỉ người đó mới có nút. Nếu giao cho tất cả, ai cũng có nút. Nếu quá hạn thì không thể làm
                   (!task.assignedToId || task.assignedToId === user?.id) &&
                   !task.isOverdue && (
-                    <button
-                      className="btn btn-primary btn-sm w-100 mt-2"
-                      onClick={() => handleStartTask(task.id)}
-                    >
-                      <i className="bi bi-play-fill me-1"></i>
-                      Bắt đầu làm
-                    </button>
+                    <>
+                      {isStaff && !currentCheckIn && (
+                        <div className="alert alert-warning py-2 px-3 mb-2">
+                          <small>
+                            <i className="bi bi-exclamation-triangle me-1"></i>
+                            Bạn cần check-in trước khi bắt đầu làm nhiệm vụ
+                          </small>
+                        </div>
+                      )}
+                      <button
+                        className="btn btn-primary btn-sm w-100 mt-2"
+                        onClick={() => handleStartTask(task.id)}
+                        disabled={isStaff && !currentCheckIn}
+                        title={isStaff && !currentCheckIn ? "Bạn cần check-in trước khi bắt đầu làm nhiệm vụ" : ""}
+                      >
+                        <i className="bi bi-play-fill me-1"></i>
+                        Bắt đầu làm
+                      </button>
+                    </>
                   )}
 
                 {task.status === "IN_PROGRESS" &&

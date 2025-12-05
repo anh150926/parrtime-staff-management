@@ -94,7 +94,10 @@ public class RequestService {
                     requestRepository.findByStoreIdAndStatus(currentUser.getStoreId(), status) :
                     requestRepository.findByStoreId(currentUser.getStoreId());
         } else {
-            requests = requestRepository.findByUserId(currentUser.getId());
+            // STAFF: filter by user ID and optionally by status
+            requests = status != null ?
+                    requestRepository.findByUserIdAndStatus(currentUser.getId(), status) :
+                    requestRepository.findByUserId(currentUser.getId());
         }
 
         return requests.stream()

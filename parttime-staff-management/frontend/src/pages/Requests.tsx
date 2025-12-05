@@ -39,6 +39,8 @@ const Requests: React.FC = () => {
       setToast({ show: true, message: 'Gửi yêu cầu thành công!', type: 'success' });
       setShowModal(false);
       setFormData({ type: 'LEAVE', startDatetime: '', endDatetime: '', reason: '' });
+      // Refresh requests list after creating
+      dispatch(fetchRequests(filterStatus || undefined));
     } catch (err: any) {
       setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });
     }
@@ -50,6 +52,8 @@ const Requests: React.FC = () => {
       await dispatch(reviewRequest({ id: selectedRequest.id, data: reviewData })).unwrap();
       setToast({ show: true, message: 'Đã xử lý yêu cầu!', type: 'success' });
       setShowReviewModal(false);
+      // Refresh requests list after review
+      dispatch(fetchRequests(filterStatus || undefined));
     } catch (err: any) {
       setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });
     }
