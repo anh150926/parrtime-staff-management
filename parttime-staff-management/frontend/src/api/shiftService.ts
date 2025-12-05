@@ -75,6 +75,11 @@ const shiftService = {
     return response.data;
   },
 
+  removeAssignment: async (shiftId: number, userId: number): Promise<ApiResponse<Shift>> => {
+    const response = await api.delete<ApiResponse<Shift>>(`/shifts/${shiftId}/assignments/${userId}`);
+    return response.data;
+  },
+
   updateAssignment: async (shiftId: number, status: 'CONFIRMED' | 'DECLINED'): Promise<ApiResponse<ShiftAssignment>> => {
     const response = await api.put<ApiResponse<ShiftAssignment>>(`/shifts/${shiftId}/assignment`, { status });
     return response.data;

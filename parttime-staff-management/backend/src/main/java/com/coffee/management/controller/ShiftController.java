@@ -98,6 +98,17 @@ public class ShiftController {
         return ResponseEntity.ok(ApiResponse.success("Assignment updated successfully", assignment));
     }
 
+    @DeleteMapping("/shifts/{shiftId}/assignments/{userId}")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
+    @Operation(summary = "Remove staff assignment from a shift")
+    public ResponseEntity<ApiResponse<ShiftResponse>> removeAssignment(
+            @PathVariable Long shiftId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        ShiftResponse shift = shiftService.removeAssignment(shiftId, userId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Assignment removed successfully", shift));
+    }
+
     @GetMapping("/my-shifts")
     @Operation(summary = "Get shifts assigned to current user")
     public ResponseEntity<ApiResponse<List<ShiftResponse>>> getMyShifts(

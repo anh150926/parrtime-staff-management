@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ShiftRepository extends JpaRepository<Shift, Long> {
@@ -30,6 +31,14 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
     
     @Query("SELECT COUNT(s) FROM Shift s WHERE s.store.id = :storeId AND MONTH(s.startDatetime) = :month AND YEAR(s.startDatetime) = :year")
     long countByStoreAndMonth(@Param("storeId") Long storeId, @Param("month") int month, @Param("year") int year);
+    
+    @Query("SELECT DISTINCT s FROM Shift s " +
+           "LEFT JOIN FETCH s.store " +
+           "LEFT JOIN FETCH s.createdBy " +
+           "LEFT JOIN FETCH s.assignments a " +
+           "LEFT JOIN FETCH a.user " +
+           "WHERE s.id = :id")
+    Optional<Shift> findByIdWithRelations(@Param("id") Long id);
 }
 
 

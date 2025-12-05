@@ -127,6 +127,21 @@ public class ShiftService {
             shift.setEndDatetime(request.getEndDatetime());
         }
         if (request.getRequiredSlots() != null) {
+            // Check if new requiredSlots is less than current assignments
+            List<ShiftAssignment> currentAssignments = assignmentRepository.findByShiftId(id);
+            int currentAssignmentCount = currentAssignments.size();
+            
+            if (request.getRequiredSlots() < currentAssignmentCount) {
+                throw new BadRequestException(
+                    String.format("Không thể giảm số người cần xuống %d. Hiện đã có %d người được phân công cho ca này.", 
+                        request.getRequiredSlots(), currentAssignmentCount)
+                );
+            }
+            
+            if (request.getRequiredSlots() < 1) {
+                throw new BadRequestException("Số người cần phải lớn hơn hoặc bằng 1");
+            }
+            
             shift.setRequiredSlots(request.getRequiredSlots());
         }
 
@@ -173,6 +188,27 @@ public class ShiftService {
             }
         }
 
+        // Get current assignments count
+        List<ShiftAssignment> currentAssignments = assignmentRepository.findByShiftId(shiftId);
+        int currentCount = currentAssignments.size();
+        int requiredSlots = shift.getRequiredSlots() != null ? shift.getRequiredSlots() : 1;
+
+        // Count how many new users will be added
+        int newUsersCount = 0;
+        for (Long userId : request.getUserIds()) {
+            if (!assignmentRepository.existsByShiftIdAndUserId(shiftId, userId)) {
+                newUsersCount++;
+            }
+        }
+
+        // Check if adding new users would exceed required slots
+        if (currentCount + newUsersCount > requiredSlots) {
+            throw new BadRequestException(
+                String.format("Không thể phân công thêm nhân viên. Ca này chỉ cần %d người, hiện đã có %d người được phân công.", 
+                    requiredSlots, currentCount)
+            );
+        }
+
         for (Long userId : request.getUserIds()) {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
@@ -201,6 +237,48 @@ public class ShiftService {
 
         // Refresh shift data
         Shift updatedShift = shiftRepository.findById(shiftId).orElseThrow();
+        return ShiftResponse.fromEntity(updatedShift);
+    }
+
+    /**
+     * Remove staff assignment from a shift
+     */
+    public ShiftResponse removeAssignment(Long shiftId, Long userId, UserPrincipal currentUser) {
+        Shift shift = shiftRepository.findById(shiftId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shift", "id", shiftId));
+
+        // Check permission
+        if (currentUser.getRole().equals("MANAGER")) {
+            if (!shift.getStore().getId().equals(currentUser.getStoreId())) {
+                throw new ForbiddenException("You can only remove assignments from shifts in your store");
+            }
+        }
+
+        // Check if assignment exists
+        ShiftAssignment assignment = assignmentRepository.findByShiftIdAndUserId(shiftId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+
+        // Get shift title and date before deleting (to avoid lazy loading issues)
+        String shiftTitle = shift.getTitle();
+        String shiftDate = shift.getStartDatetime().toLocalDate().toString();
+
+        // Delete assignment
+        assignmentRepository.delete(assignment);
+
+        // Send notification to user (userId is already available, no need to load user object)
+        try {
+            notificationService.sendNotification(userId,
+                    "Ca làm đã bị hủy phân công",
+                    "Bạn đã bị gỡ khỏi ca " + shiftTitle + " vào " + shiftDate,
+                    "/my-shifts");
+        } catch (Exception e) {
+            // Log error but don't fail the deletion if notification fails
+            // This ensures assignment is still deleted even if notification service has issues
+        }
+
+        // Refresh shift data with all relationships loaded to avoid LazyInitializationException
+        Shift updatedShift = shiftRepository.findByIdWithRelations(shiftId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shift", "id", shiftId));
         return ShiftResponse.fromEntity(updatedShift);
     }
 
