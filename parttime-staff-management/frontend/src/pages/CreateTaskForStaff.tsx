@@ -40,7 +40,6 @@ const CreateTaskForStaff: React.FC = () => {
   });
   const [staffList, setStaffList] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [assignToAll, setAssignToAll] = useState(false);
   const [toast, setToast] = useState<{
     show: boolean;
     message: string;
@@ -72,21 +71,20 @@ const CreateTaskForStaff: React.FC = () => {
   useEffect(() => {
     if (selectedStoreId) {
       dispatch(fetchTasksByStore(selectedStoreId));
-      // Filter staff for the selected store
-      // Owner có thể tạo task cho cả Manager và Staff; Manager chỉ tạo cho Staff
+      // Filter người nhận nhiệm vụ theo role:
+      // Owner chỉ giao cho Manager
+      // Manager chỉ giao cho Staff (không thể tự giao cho mình)
       const filtered = users.filter((u) => {
         if (isOwner) {
-          return (
-            (u.role === "STAFF" || u.role === "MANAGER") &&
-            u.storeId === selectedStoreId
-          );
-        } else {
-          return u.role === "STAFF" && u.storeId === selectedStoreId;
+          return u.role === "MANAGER" && u.storeId === selectedStoreId;
+        } else if (isManager) {
+          return u.role === "STAFF" && u.storeId === selectedStoreId && u.id !== user?.id;
         }
+        return false;
       });
       setStaffList(filtered);
     }
-  }, [dispatch, selectedStoreId, users, isOwner]);
+  }, [dispatch, selectedStoreId, users, isOwner, isManager, user?.id]);
 
   const handleStoreChange = (storeId: number) => {
     setSelectedStoreId(storeId);
@@ -114,11 +112,10 @@ const CreateTaskForStaff: React.FC = () => {
       return;
     }
 
-    if (!assignToAll && !formData.assignedToId) {
+    if (!formData.assignedToId) {
       setToast({
         show: true,
-        message:
-          'Vui lòng chọn nhân viên hoặc chọn "Giao cho tất cả nhân viên"!',
+        message: isOwner ? "Vui lòng chọn quản lý để giao nhiệm vụ!" : "Vui lòng chọn nhân viên để giao nhiệm vụ!",
         type: "error",
       });
       return;
@@ -129,8 +126,6 @@ const CreateTaskForStaff: React.FC = () => {
       const taskData = {
         ...formData,
         storeId: selectedStoreId!,
-        // If assignToAll is true, set assignedToId to undefined so backend doesn't assign to anyone specific
-        assignedToId: assignToAll ? undefined : formData.assignedToId,
       };
       await dispatch(createTask(taskData)).unwrap();
       setToast({
@@ -149,7 +144,6 @@ const CreateTaskForStaff: React.FC = () => {
         notes: "",
         status: "PENDING",
       });
-      setAssignToAll(false);
       // Refresh tasks list
       if (selectedStoreId) {
         dispatch(fetchTasksByStore(selectedStoreId));
@@ -265,10 +259,12 @@ const CreateTaskForStaff: React.FC = () => {
       <div className="mb-4">
         <h2 className="mb-1">
           <i className="bi bi-clipboard-check me-2"></i>
-          Giao nhiệm vụ cho nhân viên
+          {isOwner ? "Giao nhiệm vụ cho quản lý" : "Giao nhiệm vụ cho nhân viên"}
         </h2>
         <p className="text-muted mb-0">
-          Tạo và quản lý nhiệm vụ cho nhân viên của bạn
+          {isOwner
+            ? "Tạo và quản lý nhiệm vụ cho quản lý của bạn"
+            : "Tạo và quản lý nhiệm vụ cho nhân viên của bạn"}
         </p>
       </div>
 
@@ -331,29 +327,9 @@ const CreateTaskForStaff: React.FC = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Giao cho *</label>
-                  <div className="mb-2">
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="assignToAll"
-                        checked={assignToAll}
-                        onChange={(e) => {
-                          setAssignToAll(e.target.checked);
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              assignedToId: undefined,
-                            });
-                          }
-                        }}
-                      />
-                      <label className="form-check-label" htmlFor="assignToAll">
-                        Giao cho tất cả nhân viên
-                      </label>
-                    </div>
-                  </div>
+                  <label className="form-label">
+                    {isOwner ? "Giao cho quản lý *" : "Giao cho nhân viên *"}
+                  </label>
                   <select
                     className="form-select"
                     value={formData.assignedToId || ""}
@@ -365,10 +341,9 @@ const CreateTaskForStaff: React.FC = () => {
                           : undefined,
                       })
                     }
-                    disabled={assignToAll}
                   >
                     <option value="">
-                      -- Chọn nhân viên (nếu không chọn "Giao cho tất cả") --
+                      {isOwner ? "-- Chọn quản lý --" : "-- Chọn nhân viên --"}
                     </option>
                     {staffList.map((staff) => (
                       <option key={staff.id} value={staff.id}>
@@ -378,7 +353,9 @@ const CreateTaskForStaff: React.FC = () => {
                   </select>
                   {staffList.length === 0 && (
                     <small className="text-warning">
-                      Không có nhân viên nào trong cơ sở này
+                      {isOwner
+                        ? "Không có quản lý nào trong cơ sở này"
+                        : "Không có nhân viên nào trong cơ sở này"}
                     </small>
                   )}
                 </div>

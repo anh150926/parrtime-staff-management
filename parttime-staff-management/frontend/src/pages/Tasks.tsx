@@ -450,7 +450,10 @@ const Tasks: React.FC = () => {
                           Xem chi tiết
                         </button>
                       </li>
-                      {(isManager || isOwner) && task.status !== "COMPLETED" && (
+                      {/* Chỉ người tạo nhiệm vụ mới có quyền sửa */}
+                      {(isManager || isOwner) && 
+                        task.status !== "COMPLETED" && 
+                        task.createdById === user?.id && (
                         <li>
                           <button
                             className="dropdown-item"
@@ -461,7 +464,8 @@ const Tasks: React.FC = () => {
                           </button>
                         </li>
                       )}
-                      {(isManager || isOwner) && (
+                      {/* Chỉ người tạo nhiệm vụ mới có quyền xóa */}
+                      {(isManager || isOwner) && task.createdById === user?.id && (
                         <li>
                           <button
                             className="dropdown-item text-danger"

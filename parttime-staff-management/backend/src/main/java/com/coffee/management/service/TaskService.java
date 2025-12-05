@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -185,19 +186,39 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task", "id", id));
 
-        // Validate access
+        // Validate access - only task creator can update
         if (currentUser.getRole().equals("MANAGER") && !task.getStore().getId().equals(currentUser.getStoreId())) {
             throw new ForbiddenException("You can only update tasks for your store");
         }
+        
+        // Only the creator can update the task
+        if (task.getCreatedBy() != null && !task.getCreatedBy().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Chỉ người tạo nhiệm vụ mới có quyền sửa nhiệm vụ này");
+        }
 
-        if (request.getTitle() != null) {
+        // Track changes for notification
+        List<String> changedFields = new ArrayList<>();
+        
+        // Save old values and track changes
+        String oldTitle = task.getTitle();
+        String oldDescription = task.getDescription();
+        TaskPriority oldPriority = task.getPriority();
+        LocalDateTime oldDueDate = task.getDueDate();
+        String oldNotes = task.getNotes();
+        User previousAssignee = task.getAssignedTo();
+        boolean assigneeChanged = false;
+
+        if (request.getTitle() != null && !request.getTitle().equals(oldTitle)) {
             task.setTitle(request.getTitle());
+            changedFields.add("Tiêu đề");
         }
-        if (request.getDescription() != null) {
+        if (request.getDescription() != null && !request.getDescription().equals(oldDescription)) {
             task.setDescription(request.getDescription());
+            changedFields.add("Mô tả");
         }
-        if (request.getPriority() != null) {
+        if (request.getPriority() != null && request.getPriority() != oldPriority) {
             task.setPriority(request.getPriority());
+            changedFields.add("Độ ưu tiên");
         }
         if (request.getStatus() != null) {
             task.setStatus(request.getStatus());
@@ -209,28 +230,43 @@ public class TaskService {
                 task.setCompletedBy(completedBy);
             }
         }
-        if (request.getDueDate() != null) {
+        if (request.getDueDate() != null && (oldDueDate == null || !request.getDueDate().equals(oldDueDate))) {
             task.setDueDate(request.getDueDate());
+            changedFields.add("Hạn hoàn thành");
         }
-        if (request.getNotes() != null) {
+        if (request.getNotes() != null && !request.getNotes().equals(oldNotes)) {
             task.setNotes(request.getNotes());
+            changedFields.add("Ghi chú");
         }
+
         if (request.getAssignedToId() != null) {
             User assignee = userRepository.findById(request.getAssignedToId())
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getAssignedToId()));
             
             // Notify new assignee if changed
-            if (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(assignee.getId())) {
+            if (previousAssignee == null || !previousAssignee.getId().equals(assignee.getId())) {
                 notificationService.sendNotification(assignee.getId(),
                         "Nhiệm vụ mới",
                         "Bạn được giao nhiệm vụ: " + task.getTitle(),
                         "/tasks");
+                assigneeChanged = true;
+                changedFields.add("Người được giao");
             }
             
             task.setAssignedTo(assignee);
         }
 
         Task updated = taskRepository.save(task);
+
+        // Notify current assignee about task update with changed fields (if not changing assignee)
+        if (!assigneeChanged && task.getAssignedTo() != null && !changedFields.isEmpty()) {
+            String changedFieldsText = String.join(", ", changedFields);
+            notificationService.sendNotification(task.getAssignedTo().getId(),
+                    "Nhiệm vụ đã bị thay đổi",
+                    "Nhiệm vụ \"" + task.getTitle() + "\" đã thay đổi: " + changedFieldsText,
+                    "/tasks");
+        }
+
         return TaskResponse.fromEntity(updated);
     }
 
@@ -332,11 +368,27 @@ public class TaskService {
         if (currentUser.getRole().equals("MANAGER") && !task.getStore().getId().equals(currentUser.getStoreId())) {
             throw new ForbiddenException("You can only delete tasks for your store");
         }
+        
+        // Only the creator can delete the task
+        if (task.getCreatedBy() != null && !task.getCreatedBy().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Chỉ người tạo nhiệm vụ mới có quyền xóa nhiệm vụ này");
+        }
+
+        String taskTitle = task.getTitle();
+        User assignedTo = task.getAssignedTo();
 
         taskRepository.delete(task);
 
+        // Notify assignee about task deletion
+        if (assignedTo != null) {
+            notificationService.sendNotification(assignedTo.getId(),
+                    "Nhiệm vụ của bạn đã bị xóa",
+                    "Nhiệm vụ \"" + taskTitle + "\" đã bị xóa khỏi hệ thống",
+                    "/tasks");
+        }
+
         auditService.log(currentUser.getId(), "DELETE", "TASK", id,
-                "Deleted task: " + task.getTitle());
+                "Deleted task: " + taskTitle);
     }
 
     /**
