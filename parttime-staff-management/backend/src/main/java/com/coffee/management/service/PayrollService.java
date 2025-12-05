@@ -49,6 +49,9 @@ public class PayrollService {
     private static final BigDecimal LATE_PENALTY_PER_OCCURRENCE = new BigDecimal("10000"); // 10.000 VNĐ mỗi lần đi muộn
     private static final int LATE_THRESHOLD_MINUTES = 15; // Trễ > 15 phút tính là đi muộn
     private static final BigDecimal COMPLAINT_PENALTY = new BigDecimal("50000"); // 50.000 VNĐ mỗi khiếu nại xác nhận
+    
+    // Lương cố định hàng tháng cho managers
+    private static final BigDecimal MANAGER_MONTHLY_SALARY = new BigDecimal("7000000"); // 7.000.000 VNĐ/tháng
 
     /**
      * Generate payroll for a month
@@ -64,13 +67,29 @@ public class PayrollService {
             if (currentUser.getRole().equals("MANAGER") && !storeId.equals(currentUser.getStoreId())) {
                 throw new ForbiddenException("You can only generate payroll for your store");
             }
-            users = userRepository.findByStoreIdAndRole(storeId, Role.STAFF);
+            // Manager chỉ tạo bảng lương cho STAFF, Owner tạo cho cả STAFF và MANAGER
+            if (currentUser.getRole().equals("OWNER")) {
+                // Owner: bao gồm cả STAFF và MANAGER
+                List<User> staff = userRepository.findByStoreIdAndRole(storeId, Role.STAFF);
+                List<User> managers = userRepository.findByStoreIdAndRole(storeId, Role.MANAGER);
+                users = new ArrayList<>();
+                users.addAll(staff);
+                users.addAll(managers);
+            } else {
+                // Manager: chỉ STAFF
+                users = userRepository.findByStoreIdAndRole(storeId, Role.STAFF);
+            }
         } else {
             // Only owner can generate for all stores
             if (!currentUser.getRole().equals("OWNER")) {
                 throw new ForbiddenException("Only owner can generate payroll for all stores");
             }
-            users = userRepository.findByRole(Role.STAFF);
+            // Owner: bao gồm cả STAFF và MANAGER
+            List<User> staff = userRepository.findByRole(Role.STAFF);
+            List<User> managers = userRepository.findByRole(Role.MANAGER);
+            users = new ArrayList<>();
+            users.addAll(staff);
+            users.addAll(managers);
         }
 
         return users.stream()
@@ -82,19 +101,28 @@ public class PayrollService {
         // Check if payroll already exists
         Payroll existingPayroll = payrollRepository.findByUserIdAndMonth(user.getId(), month).orElse(null);
         
-        // Calculate total minutes worked
-        Long totalMinutes = timeLogRepository.sumDurationByUserAndDateRange(user.getId(), startDate, endDate);
-        totalMinutes = totalMinutes != null ? totalMinutes : 0L;
+        BigDecimal totalHours;
+        BigDecimal grossPay;
+        
+        // Managers: lương cố định 7 triệu/tháng, không cần chấm công
+        if (user.getRole() == Role.MANAGER) {
+            totalHours = BigDecimal.ZERO; // Managers không tính giờ làm
+            grossPay = MANAGER_MONTHLY_SALARY; // Lương cố định 7 triệu/tháng
+        } else {
+            // STAFF: tính lương theo giờ làm việc
+            Long totalMinutes = timeLogRepository.sumDurationByUserAndDateRange(user.getId(), startDate, endDate);
+            totalMinutes = totalMinutes != null ? totalMinutes : 0L;
 
-        // Convert to hours
-        BigDecimal totalHours = BigDecimal.valueOf(totalMinutes)
-                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            // Convert to hours
+            totalHours = BigDecimal.valueOf(totalMinutes)
+                    .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
 
-        // Calculate gross pay
-        BigDecimal hourlyRate = user.getHourlyRate() != null ? user.getHourlyRate() : BigDecimal.ZERO;
-        BigDecimal grossPay = totalHours.multiply(hourlyRate);
+            // Calculate gross pay
+            BigDecimal hourlyRate = user.getHourlyRate() != null ? user.getHourlyRate() : BigDecimal.ZERO;
+            grossPay = totalHours.multiply(hourlyRate);
+        }
 
-        // Calculate auto-deductions
+        // Calculate auto-deductions (chỉ áp dụng cho STAFF, managers không chấm công nên không có phạt đi muộn)
         DeductionResult deductions = calculateAutoDeductions(user, startDate, endDate);
 
         Payroll payroll;
@@ -132,34 +160,37 @@ public class PayrollService {
 
     /**
      * Calculate auto-deductions from late check-ins and complaints
+     * Note: Managers không chấm công nên không tính phạt đi muộn, chỉ tính phạt khiếu nại
      */
     private DeductionResult calculateAutoDeductions(User user, LocalDateTime startDate, LocalDateTime endDate) {
         BigDecimal totalDeduction = BigDecimal.ZERO;
         List<String> deductionNotes = new ArrayList<>();
 
-        // 1. Calculate late check-in penalties
-        List<TimeLog> timeLogsWithShift = timeLogRepository.findByUserIdAndDateRangeWithShift(
-                user.getId(), startDate, endDate);
-        
-        int lateCount = 0;
-        for (TimeLog timeLog : timeLogsWithShift) {
-            if (timeLog.getShift() != null && timeLog.getCheckIn() != null) {
-                LocalDateTime shiftStart = timeLog.getShift().getStartDatetime();
-                long minutesLate = ChronoUnit.MINUTES.between(shiftStart, timeLog.getCheckIn());
-                
-                if (minutesLate > LATE_THRESHOLD_MINUTES) {
-                    lateCount++;
+        // 1. Calculate late check-in penalties (chỉ áp dụng cho STAFF, managers không chấm công)
+        if (user.getRole() == Role.STAFF) {
+            List<TimeLog> timeLogsWithShift = timeLogRepository.findByUserIdAndDateRangeWithShift(
+                    user.getId(), startDate, endDate);
+            
+            int lateCount = 0;
+            for (TimeLog timeLog : timeLogsWithShift) {
+                if (timeLog.getShift() != null && timeLog.getCheckIn() != null) {
+                    LocalDateTime shiftStart = timeLog.getShift().getStartDatetime();
+                    long minutesLate = ChronoUnit.MINUTES.between(shiftStart, timeLog.getCheckIn());
+                    
+                    if (minutesLate > LATE_THRESHOLD_MINUTES) {
+                        lateCount++;
+                    }
                 }
             }
-        }
-        
-        if (lateCount > 0) {
-            BigDecimal latePenalty = LATE_PENALTY_PER_OCCURRENCE.multiply(BigDecimal.valueOf(lateCount));
-            totalDeduction = totalDeduction.add(latePenalty);
-            deductionNotes.add(String.format("Đi muộn %d lần (-%s)", lateCount, formatCurrency(latePenalty)));
+            
+            if (lateCount > 0) {
+                BigDecimal latePenalty = LATE_PENALTY_PER_OCCURRENCE.multiply(BigDecimal.valueOf(lateCount));
+                totalDeduction = totalDeduction.add(latePenalty);
+                deductionNotes.add(String.format("Đi muộn %d lần (-%s)", lateCount, formatCurrency(latePenalty)));
+            }
         }
 
-        // 2. Calculate complaint penalties
+        // 2. Calculate complaint penalties (áp dụng cho cả STAFF và MANAGER)
         long complaintCount = complaintRepository.countResolvedComplaintsAgainstUser(
                 user.getId(), startDate, endDate);
         

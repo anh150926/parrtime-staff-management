@@ -6,6 +6,7 @@ export interface Payroll {
   userId: number;
   userName: string;
   userEmail: string;
+  userRole?: 'OWNER' | 'MANAGER' | 'STAFF';
   storeId?: number;
   storeName?: string;
   month: string;

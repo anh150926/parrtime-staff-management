@@ -184,12 +184,17 @@ const Payrolls: React.FC = () => {
     const totalGross = payrolls.reduce((sum, p) => sum + p.grossPay, 0);
     const totalNet = payrolls.reduce((sum, p) => sum + p.netPay, 0);
     const totalAdjustments = payrolls.reduce((sum, p) => sum + p.adjustments, 0);
-    const totalHours = payrolls.reduce((sum, p) => sum + p.totalHours, 0);
+    const totalHours = payrolls.reduce((sum, p) => sum + (p.userRole !== 'MANAGER' ? p.totalHours : 0), 0);
     const draftCount = payrolls.filter(p => p.status === 'DRAFT').length;
     const approvedCount = payrolls.filter(p => p.status === 'APPROVED').length;
     const paidCount = payrolls.filter(p => p.status === 'PAID').length;
     
     return { totalGross, totalNet, totalAdjustments, totalHours, draftCount, approvedCount, paidCount };
+  }, [payrolls]);
+
+  // Kiểm tra xem có staff nào không (để quyết định hiển thị cột giờ làm và lương/giờ)
+  const hasStaff = useMemo(() => {
+    return payrolls.some(p => p.userRole !== 'MANAGER');
   }, [payrolls]);
 
   if (loading) return <Loading />;
@@ -353,8 +358,12 @@ const Payrolls: React.FC = () => {
                   <th style={{ width: '5%' }}>#</th>
                   <th style={{ width: '20%' }}>Nhân viên</th>
                   <th style={{ width: '12%' }}>Cơ sở</th>
-                  <th className="text-center" style={{ width: '8%' }}>Giờ làm</th>
-                  <th className="text-end" style={{ width: '10%' }}>Lương/giờ</th>
+                  {hasStaff && (
+                    <>
+                      <th className="text-center" style={{ width: '8%' }}>Giờ làm</th>
+                      <th className="text-end" style={{ width: '10%' }}>Lương/giờ</th>
+                    </>
+                  )}
                   <th className="text-end" style={{ width: '12%' }}>Tổng lương</th>
                   <th className="text-end" style={{ width: '10%' }}>Điều chỉnh</th>
                   <th className="text-end" style={{ width: '12%' }}>Thực lĩnh</th>
@@ -384,12 +393,25 @@ const Payrolls: React.FC = () => {
                         {payroll.storeName || '---'}
                       </span>
                     </td>
-                    <td className="text-center">
-                      <span className="fw-semibold">{payroll.totalHours}h</span>
-                    </td>
-                    <td className="text-end">
-                      {payroll.hourlyRate ? formatCurrency(payroll.hourlyRate) : '---'}
-                    </td>
+                    {hasStaff && (
+                      <>
+                        {payroll.userRole === 'MANAGER' ? (
+                          <>
+                            <td className="text-center">-</td>
+                            <td className="text-end">-</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="text-center">
+                              <span className="fw-semibold">{payroll.totalHours}h</span>
+                            </td>
+                            <td className="text-end">
+                              {payroll.hourlyRate ? formatCurrency(payroll.hourlyRate) : '---'}
+                            </td>
+                          </>
+                        )}
+                      </>
+                    )}
                     <td className="text-end fw-semibold">{formatCurrency(payroll.grossPay)}</td>
                     <td className="text-end">
                       <span className={`fw-semibold ${payroll.adjustments >= 0 ? 'text-success' : 'text-danger'}`}>

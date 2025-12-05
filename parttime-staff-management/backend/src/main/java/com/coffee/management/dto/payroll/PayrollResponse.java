@@ -2,6 +2,7 @@ package com.coffee.management.dto.payroll;
 
 import com.coffee.management.entity.Payroll;
 import com.coffee.management.entity.PayrollStatus;
+import com.coffee.management.entity.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class PayrollResponse {
     private Long userId;
     private String userName;
     private String userEmail;
+    private Role userRole;
     private Long storeId;
     private String storeName;
     private String month;
@@ -40,6 +42,7 @@ public class PayrollResponse {
                 .userId(payroll.getUser().getId())
                 .userName(payroll.getUser().getFullName())
                 .userEmail(payroll.getUser().getEmail())
+                .userRole(payroll.getUser().getRole())
                 .storeId(payroll.getUser().getStore() != null ? payroll.getUser().getStore().getId() : null)
                 .storeName(payroll.getUser().getStore() != null ? payroll.getUser().getStore().getName() : null)
                 .month(payroll.getMonth())
