@@ -8,6 +8,8 @@ export interface Notification {
   message?: string;
   isRead: boolean;
   link?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   createdAt: string;
 }
 

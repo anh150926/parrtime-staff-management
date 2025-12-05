@@ -103,9 +103,24 @@ const Layout: React.FC = () => {
                 className="btn btn-link text-white d-flex align-items-center"
                 data-bs-toggle="dropdown"
               >
-                <div className="avatar me-2">
-                  {user?.fullName.charAt(0).toUpperCase()}
-                </div>
+                {user?.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt="Avatar"
+                    className="me-2"
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid var(--coffee-accent)'
+                    }}
+                  />
+                ) : (
+                  <div className="avatar me-2">
+                    {user?.fullName.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <span className="d-none d-md-inline">{user?.fullName}</span>
                 <i className="bi bi-chevron-down ms-2"></i>
               </button>

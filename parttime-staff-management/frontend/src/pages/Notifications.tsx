@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../app/store';
 import { fetchNotifications, markAsRead, markAllAsRead } from '../features/notifications/notificationSlice';
@@ -15,17 +15,20 @@ const Notifications: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { notifications, loading } = useSelector((state: RootState) => state.notifications);
   const { stores } = useSelector((state: RootState) => state.stores);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendData, setSendData] = useState({
     title: '',
     message: '',
-    link: '',
+    attachmentUrl: '',
+    attachmentName: '',
     storeId: undefined as number | undefined,
     targetRole: '' as string,
   });
   const [sending, setSending] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ 
     show: false, message: '', type: 'success' 
   });
@@ -55,6 +58,69 @@ const Notifications: React.FC = () => {
     await dispatch(markAllAsRead());
   };
 
+  const handleFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setToast({ show: true, message: 'Tệp không được vượt quá 5MB!', type: 'error' });
+      return;
+    }
+
+    setUploadingFile(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string;
+        setSendData({ 
+          ...sendData, 
+          attachmentUrl: base64String,
+          attachmentName: file.name 
+        });
+        setUploadingFile(false);
+      };
+      reader.onerror = () => {
+        setToast({ show: true, message: 'Không thể đọc tệp!', type: 'error' });
+        setUploadingFile(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setToast({ show: true, message: 'Có lỗi xảy ra khi xử lý tệp!', type: 'error' });
+      setUploadingFile(false);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = () => {
+    setSendData({ ...sendData, attachmentUrl: '', attachmentName: '' });
+  };
+
+  const getFileIcon = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return 'bi-file-image';
+    if (['pdf'].includes(ext || '')) return 'bi-file-pdf';
+    if (['doc', 'docx'].includes(ext || '')) return 'bi-file-word';
+    if (['xls', 'xlsx'].includes(ext || '')) return 'bi-file-excel';
+    if (['ppt', 'pptx'].includes(ext || '')) return 'bi-file-ppt';
+    if (['zip', 'rar', '7z'].includes(ext || '')) return 'bi-file-zip';
+    return 'bi-file-earmark';
+  };
+
+  const isImageFile = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '');
+  };
+
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
@@ -62,19 +128,31 @@ const Notifications: React.FC = () => {
       const response = await api.post('/notifications/broadcast', {
         title: sendData.title,
         message: sendData.message,
-        link: sendData.link || null,
+        link: null,
+        attachmentUrl: sendData.attachmentUrl || null,
+        attachmentName: sendData.attachmentName || null,
         storeId: sendData.storeId || null,
         targetRole: sendData.targetRole || null,
       });
       const sentCount = (response.data as any)?.data?.sentCount || 0;
       setToast({ show: true, message: `Đã gửi thông báo đến ${sentCount} người!`, type: 'success' });
       setShowSendModal(false);
-      setSendData({ title: '', message: '', link: '', storeId: undefined, targetRole: '' });
+      setSendData({ title: '', message: '', attachmentUrl: '', attachmentName: '', storeId: undefined, targetRole: '' });
     } catch (err: any) {
       setToast({ show: true, message: err.response?.data?.message || 'Có lỗi xảy ra!', type: 'error' });
     } finally {
       setSending(false);
     }
+  };
+
+  const handleDownloadAttachment = (attachmentUrl: string, attachmentName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const link = document.createElement('a');
+    link.href = attachmentUrl;
+    link.download = attachmentName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const filteredNotifications = filter === 'unread' 
@@ -154,6 +232,43 @@ const Notifications: React.FC = () => {
                   </small>
                 </div>
                 <p className="mb-1 text-muted small">{notification.message}</p>
+                
+                {/* Display attachment if exists */}
+                {notification.attachmentUrl && notification.attachmentName && (
+                  <div className="mt-2">
+                    {isImageFile(notification.attachmentName) ? (
+                      <div className="d-flex align-items-center gap-2">
+                        <img 
+                          src={notification.attachmentUrl} 
+                          alt={notification.attachmentName}
+                          style={{ 
+                            maxWidth: '200px', 
+                            maxHeight: '150px', 
+                            borderRadius: '8px',
+                            border: '1px solid #ddd'
+                          }}
+                        />
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={(e) => handleDownloadAttachment(notification.attachmentUrl!, notification.attachmentName!, e)}
+                        >
+                          <i className="bi bi-download me-1"></i>
+                          Tải xuống
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
+                        onClick={(e) => handleDownloadAttachment(notification.attachmentUrl!, notification.attachmentName!, e)}
+                      >
+                        <i className={`${getFileIcon(notification.attachmentName!)}`}></i>
+                        <span>{notification.attachmentName}</span>
+                        <i className="bi bi-download"></i>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {notification.link && (
                   <small className="text-primary">
                     <i className="bi bi-link-45deg me-1"></i>
@@ -259,17 +374,85 @@ const Notifications: React.FC = () => {
                       </div>
 
                       <div className="col-12">
-                        <label className="form-label">Link (tùy chọn)</label>
+                        <label className="form-label">Đính kèm tệp (tùy chọn)</label>
+                        
+                        {/* Hidden file input */}
                         <input
-                          type="text"
-                          className="form-control"
-                          value={sendData.link}
-                          onChange={(e) => setSendData({ ...sendData, link: e.target.value })}
-                          placeholder="VD: /shifts hoặc /requests"
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          style={{ display: 'none' }}
+                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar"
                         />
-                        <small className="text-muted">
-                          Đường dẫn trong hệ thống để người nhận có thể click vào
-                        </small>
+                        
+                        {!sendData.attachmentUrl ? (
+                          <div 
+                            className="border border-2 border-dashed rounded p-4 text-center"
+                            style={{ 
+                              cursor: 'pointer',
+                              backgroundColor: '#f8f9fa',
+                              borderColor: '#dee2e6'
+                            }}
+                            onClick={handleFileSelect}
+                          >
+                            {uploadingFile ? (
+                              <div>
+                                <div className="spinner-border spinner-border-sm text-primary mb-2" role="status">
+                                  <span className="visually-hidden">Loading...</span>
+                                </div>
+                                <p className="mb-0 text-muted">Đang tải tệp...</p>
+                              </div>
+                            ) : (
+                              <div>
+                                <i className="bi bi-cloud-upload fs-1 text-muted"></i>
+                                <p className="mb-1 mt-2">Click để chọn tệp hoặc kéo thả vào đây</p>
+                                <small className="text-muted">
+                                  Hỗ trợ: Ảnh, PDF, Word, Excel, PowerPoint, ZIP (Tối đa 5MB)
+                                </small>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="border rounded p-3 d-flex align-items-center justify-content-between bg-light">
+                            <div className="d-flex align-items-center gap-3">
+                              {isImageFile(sendData.attachmentName) ? (
+                                <img 
+                                  src={sendData.attachmentUrl} 
+                                  alt="Preview"
+                                  style={{ 
+                                    width: '60px', 
+                                    height: '60px', 
+                                    objectFit: 'cover',
+                                    borderRadius: '8px'
+                                  }}
+                                />
+                              ) : (
+                                <i className={`${getFileIcon(sendData.attachmentName)} fs-1 text-primary`}></i>
+                              )}
+                              <div>
+                                <strong>{sendData.attachmentName}</strong>
+                                <br />
+                                <small className="text-muted">Đã chọn tệp</small>
+                              </div>
+                            </div>
+                            <div className="d-flex gap-2">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={handleFileSelect}
+                              >
+                                <i className="bi bi-arrow-repeat"></i>
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={removeAttachment}
+                              >
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -282,7 +465,7 @@ const Notifications: React.FC = () => {
                     >
                       Hủy
                     </button>
-                    <button type="submit" className="btn btn-coffee" disabled={sending}>
+                    <button type="submit" className="btn btn-coffee" disabled={sending || uploadingFile}>
                       {sending ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>

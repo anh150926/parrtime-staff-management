@@ -161,6 +161,8 @@ public class NotificationService {
                     .title(request.getTitle())
                     .message(request.getMessage())
                     .link(request.getLink())
+                    .attachmentUrl(request.getAttachmentUrl())
+                    .attachmentName(request.getAttachmentName())
                     .isRead(false)
                     .build();
             notificationRepository.save(notification);

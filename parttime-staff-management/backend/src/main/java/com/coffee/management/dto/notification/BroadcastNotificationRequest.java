@@ -17,6 +17,12 @@ public class BroadcastNotificationRequest {
     
     private String link;
     
+    // File attachment as base64
+    private String attachmentUrl;
+    
+    // Original filename of attachment
+    private String attachmentName;
+    
     // null = all stores (for Owner), for Manager this will be their store
     private Long storeId;
     
@@ -34,6 +40,14 @@ public class BroadcastNotificationRequest {
 
     public String getLink() {
         return link;
+    }
+
+    public String getAttachmentUrl() {
+        return attachmentUrl;
+    }
+
+    public String getAttachmentName() {
+        return attachmentName;
     }
 
     public Long getStoreId() {

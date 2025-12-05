@@ -20,6 +20,7 @@ export interface UpdateUserRequest {
   storeId?: number;
   hourlyRate?: number;
   status?: 'ACTIVE' | 'INACTIVE';
+  avatarUrl?: string;
 }
 
 const userService = {

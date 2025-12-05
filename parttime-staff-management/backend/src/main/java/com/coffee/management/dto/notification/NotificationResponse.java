@@ -20,6 +20,8 @@ public class NotificationResponse {
     private String message;
     private Boolean isRead;
     private String link;
+    private String attachmentUrl;
+    private String attachmentName;
     private LocalDateTime createdAt;
     
     public static NotificationResponse fromEntity(Notification notification) {
@@ -30,6 +32,8 @@ public class NotificationResponse {
                 .message(notification.getMessage())
                 .isRead(notification.getIsRead())
                 .link(notification.getLink())
+                .attachmentUrl(notification.getAttachmentUrl())
+                .attachmentName(notification.getAttachmentName())
                 .createdAt(notification.getCreatedAt())
                 .build();
     }

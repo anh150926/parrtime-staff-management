@@ -39,6 +39,13 @@ public class Notification {
     @Column(length = 500)
     private String link;
 
+    @Lob
+    @Column(name = "attachment_url", columnDefinition = "LONGTEXT")
+    private String attachmentUrl;
+
+    @Column(name = "attachment_name", length = 255)
+    private String attachmentName;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -61,6 +68,8 @@ public class Notification {
         private String message;
         private Boolean isRead = false; // Default value from @Builder.Default
         private String link;
+        private String attachmentUrl;
+        private String attachmentName;
         private LocalDateTime createdAt;
 
         public NotificationBuilder id(Long id) {
@@ -93,13 +102,23 @@ public class Notification {
             return this;
         }
 
+        public NotificationBuilder attachmentUrl(String attachmentUrl) {
+            this.attachmentUrl = attachmentUrl;
+            return this;
+        }
+
+        public NotificationBuilder attachmentName(String attachmentName) {
+            this.attachmentName = attachmentName;
+            return this;
+        }
+
         public NotificationBuilder createdAt(LocalDateTime createdAt) {
             this.createdAt = createdAt;
             return this;
         }
 
         public Notification build() {
-            return new Notification(id, user, title, message, isRead, link, createdAt);
+            return new Notification(id, user, title, message, isRead, link, attachmentUrl, attachmentName, createdAt);
         }
     }
 }

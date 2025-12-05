@@ -206,9 +206,24 @@ const Users: React.FC = () => {
                   <tr key={user.id}>
                     <td>
                       <div className="d-flex align-items-center">
-                        <div className="avatar me-2">
-                          {user.fullName.charAt(0).toUpperCase()}
-                        </div>
+                        {user.avatarUrl ? (
+                          <img 
+                            src={user.avatarUrl} 
+                            alt={user.fullName}
+                            className="me-2"
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '50%',
+                              objectFit: 'cover',
+                              border: '2px solid var(--coffee-accent)'
+                            }}
+                          />
+                        ) : (
+                          <div className="avatar me-2">
+                            {user.fullName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div>
                           <strong>{user.fullName}</strong>
                           <br />
