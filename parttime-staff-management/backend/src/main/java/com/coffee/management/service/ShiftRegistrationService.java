@@ -7,6 +7,7 @@ import com.coffee.management.exception.ForbiddenException;
 import com.coffee.management.exception.ResourceNotFoundException;
 import com.coffee.management.repository.*;
 import com.coffee.management.security.UserPrincipal;
+import com.coffee.management.entity.ShiftFinalization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,9 @@ public class ShiftRegistrationService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private ShiftFinalizationRepository finalizationRepository;
 
     /**
      * Create shift template for registration
@@ -89,6 +93,7 @@ public class ShiftRegistrationService {
                 .isTemplate(true)
                 .shiftType(request.getShiftType())
                 .dayOfWeek(request.getDayOfWeek())
+                .notes(request.getNotes())
                 .createdBy(creator)
                 .build();
 
@@ -135,6 +140,18 @@ public class ShiftRegistrationService {
         // Verify user belongs to same store
         if (user.getStore() == null || !user.getStore().getId().equals(template.getStore().getId())) {
             throw new BadRequestException("You can only register for shifts in your store");
+        }
+
+        // Check if registration date is in the past
+        LocalDate today = LocalDate.now();
+        if (request.getRegistrationDate().isBefore(today)) {
+            throw new BadRequestException("Không thể đăng ký ca đã qua. Chỉ có thể đăng ký ca trong tương lai.");
+        }
+
+        // Check if this shift has been finalized (locked)
+        if (finalizationRepository.findByShiftTemplateIdAndFinalizationDate(
+                shiftTemplateId, request.getRegistrationDate()).isPresent()) {
+            throw new BadRequestException("Ca này đã được chốt. Không thể đăng ký thêm.");
         }
 
         // Check if already registered
@@ -203,6 +220,13 @@ public class ShiftRegistrationService {
     }
 
     /**
+     * Check if shift is finalized for a specific date
+     */
+    public boolean isShiftFinalized(Long shiftTemplateId, LocalDate date) {
+        return finalizationRepository.findByShiftTemplateIdAndFinalizationDate(shiftTemplateId, date).isPresent();
+    }
+
+    /**
      * Cancel registration
      */
     public void cancelRegistration(Long registrationId, UserPrincipal currentUser) {
@@ -214,8 +238,48 @@ public class ShiftRegistrationService {
             throw new ForbiddenException("You can only cancel your own registrations");
         }
 
+        // Check if shift has been finalized
+        if (finalizationRepository.findByShiftTemplateIdAndFinalizationDate(
+                registration.getShift().getId(), registration.getRegistrationDate()).isPresent()) {
+            throw new BadRequestException("Ca này đã được chốt. Không thể hủy đăng ký.");
+        }
+
         registration.setStatus(RegistrationStatus.CANCELLED);
         registration.setCancelledAt(LocalDateTime.now());
         registrationRepository.save(registration);
+    }
+
+    /**
+     * Finalize shift (lock registrations for a specific date)
+     */
+    public void finalizeShift(Long shiftTemplateId, LocalDate finalizationDate, UserPrincipal currentUser) {
+        Shift template = shiftRepository.findById(shiftTemplateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shift template", "id", shiftTemplateId));
+
+        if (template.getIsTemplate() == null || !template.getIsTemplate()) {
+            throw new BadRequestException("This is not a shift template");
+        }
+
+        // Check permission
+        if (currentUser.getRole().equals("MANAGER") && 
+            !template.getStore().getId().equals(currentUser.getStoreId())) {
+            throw new ForbiddenException("You can only finalize shifts for your store");
+        }
+
+        // Check if already finalized
+        if (finalizationRepository.findByShiftTemplateIdAndFinalizationDate(shiftTemplateId, finalizationDate).isPresent()) {
+            throw new BadRequestException("Ca này đã được chốt rồi.");
+        }
+
+        User finalizer = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
+
+        ShiftFinalization finalization = ShiftFinalization.builder()
+                .shiftTemplate(template)
+                .finalizationDate(finalizationDate)
+                .finalizedBy(finalizer)
+                .build();
+
+        finalizationRepository.save(finalization);
     }
 }

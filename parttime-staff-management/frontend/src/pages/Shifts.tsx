@@ -6,6 +6,7 @@ import { fetchStores } from '../features/stores/storeSlice';
 import { fetchUsers } from '../features/users/userSlice';
 import { CreateShiftRequest } from '../api/shiftService';
 import shiftService from '../api/shiftService';
+import shiftRegistrationService, { CreateShiftTemplateRequest, ShiftTemplate, ShiftRegistration } from '../api/shiftRegistrationService';
 import Loading from '../components/Loading';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
@@ -17,6 +18,13 @@ const Shifts: React.FC = () => {
   const { shifts, loading } = useSelector((state: RootState) => state.shifts);
   const { stores } = useSelector((state: RootState) => state.stores);
   const { users } = useSelector((state: RootState) => state.users);
+  
+  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+  const [registrations, setRegistrations] = useState<ShiftRegistration[]>([]);
+  const [showRegistrationsModal, setShowRegistrationsModal] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<ShiftTemplate | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [finalizedShifts, setFinalizedShifts] = useState<Set<string>>(new Set()); // Store "templateId_date" as key
 
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -37,6 +45,35 @@ const Shifts: React.FC = () => {
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ show: false, message: '', type: 'success' });
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [weekStart, setWeekStart] = useState<Date>(getWeekStart(new Date()));
+  const [showCreateShiftModal, setShowCreateShiftModal] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedShiftType, setSelectedShiftType] = useState<'MORNING' | 'AFTERNOON' | 'EVENING' | null>(null);
+  const [shiftTemplateForm, setShiftTemplateForm] = useState<CreateShiftTemplateRequest & { notes?: string }>({
+    title: '',
+    shiftType: 'MORNING',
+    dayOfWeek: 1,
+    startTime: '08:00',
+    endTime: '12:00',
+    requiredSlots: 1,
+    notes: ''
+  });
+
+  function getWeekStart(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.setDate(diff));
+  }
+
+  function formatDate(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
+  function getDayName(dayOfWeek: number): string {
+    const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    return days[dayOfWeek === 7 ? 0 : dayOfWeek];
+  }
 
   useEffect(() => {
     dispatch(fetchStores());
@@ -53,9 +90,52 @@ const Shifts: React.FC = () => {
 
   useEffect(() => {
     if (selectedStoreId) {
-      dispatch(fetchShiftsByStore({ storeId: selectedStoreId }));
+      loadTemplates();
     }
   }, [dispatch, selectedStoreId]);
+
+  const loadTemplates = async () => {
+    if (!selectedStoreId) return;
+    try {
+      const response = await shiftRegistrationService.getShiftTemplates(selectedStoreId);
+      setTemplates(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to load templates:', error);
+    }
+  };
+
+  const loadRegistrations = async () => {
+    if (!selectedStoreId) return;
+    try {
+      const response = await shiftRegistrationService.getRegistrationsForWeek(selectedStoreId, formatDate(weekStart));
+      setRegistrations(response.data || []);
+      
+      // Load finalized status for all templates and dates in this week only
+      const finalizedSet = new Set<string>();
+      for (const template of templates) {
+        for (let day = 1; day <= 7; day++) {
+          const date = getDateForDay(day);
+          try {
+            const finalizedResponse = await shiftRegistrationService.isShiftFinalized(template.id, formatDate(date));
+            if (finalizedResponse.data) {
+              finalizedSet.add(`${template.id}_${formatDate(date)}`);
+            }
+          } catch (error) {
+            // Ignore errors
+          }
+        }
+      }
+      setFinalizedShifts(finalizedSet);
+    } catch (error: any) {
+      console.error('Failed to load registrations:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (templates.length > 0) {
+      loadRegistrations();
+    }
+  }, [templates, weekStart, selectedStoreId]);
 
   const storeStaff = users.filter(
     (u) => u.role === 'STAFF' && u.storeId === selectedStoreId
@@ -69,6 +149,122 @@ const Shifts: React.FC = () => {
       requiredSlots: 1,
     });
     setShowModal(true);
+  };
+
+  const handleOpenCreateShiftModal = (day: number, shiftType: 'MORNING' | 'AFTERNOON' | 'EVENING') => {
+    console.log('Opening create shift modal:', { day, shiftType, selectedStoreId });
+    if (!selectedStoreId) {
+      setToast({ show: true, message: 'Vui lòng chọn cơ sở trước!', type: 'warning' });
+      return;
+    }
+    setSelectedDay(day);
+    setSelectedShiftType(shiftType);
+    
+    // Set default times based on shift type
+    let defaultStart = '08:00';
+    let defaultEnd = '12:00';
+    if (shiftType === 'AFTERNOON') {
+      defaultStart = '12:00';
+      defaultEnd = '17:00';
+    } else if (shiftType === 'EVENING') {
+      defaultStart = '17:00';
+      defaultEnd = '22:00';
+    }
+
+    setShiftTemplateForm({
+      title: shiftType === 'MORNING' ? 'Ca sáng' : shiftType === 'AFTERNOON' ? 'Ca chiều' : 'Ca tối',
+      shiftType: shiftType,
+      dayOfWeek: day,
+      startTime: defaultStart,
+      endTime: defaultEnd,
+      requiredSlots: 1,
+      notes: ''
+    });
+    setShowCreateShiftModal(true);
+    console.log('Modal state set:', { showCreateShiftModal: true, selectedDay: day, selectedShiftType: shiftType });
+  };
+
+  const handleCreateShiftTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStoreId || !selectedDay || !selectedShiftType) return;
+
+    try {
+      await shiftRegistrationService.createShiftTemplate(selectedStoreId, {
+        title: shiftTemplateForm.title,
+        shiftType: shiftTemplateForm.shiftType,
+        dayOfWeek: selectedDay,
+        startTime: shiftTemplateForm.startTime,
+        endTime: shiftTemplateForm.endTime,
+        requiredSlots: shiftTemplateForm.requiredSlots || 1,
+        notes: shiftTemplateForm.notes || undefined
+      });
+      
+      setToast({ show: true, message: 'Tạo ca mẫu thành công!', type: 'success' });
+      setShowCreateShiftModal(false);
+      setSelectedDay(null);
+      setSelectedShiftType(null);
+      // Reset form
+      setShiftTemplateForm({
+        title: '',
+        shiftType: 'MORNING',
+        dayOfWeek: 1,
+        startTime: '08:00',
+        endTime: '12:00',
+        requiredSlots: 1,
+        notes: ''
+      });
+      // Refresh data
+      await loadTemplates();
+      await loadRegistrations();
+    } catch (error: any) {
+      setToast({ 
+        show: true, 
+        message: error?.response?.data?.message || 'Có lỗi xảy ra khi tạo ca!', 
+        type: 'error' 
+      });
+    }
+  };
+
+  const getDateForDay = (dayOfWeek: number): Date => {
+    const date = new Date(weekStart);
+    const diff = dayOfWeek - 1;
+    date.setDate(date.getDate() + diff);
+    return date;
+  };
+
+  const getTemplatesForDayAndType = (day: number, shiftType: string): ShiftTemplate[] => {
+    return templates.filter((template: ShiftTemplate) => {
+      return template.dayOfWeek === day && template.shiftType === shiftType;
+    });
+  };
+
+  const getRegistrationsForTemplateAndDate = (templateId: number, date: Date): ShiftRegistration[] => {
+    const dateStr = formatDate(date);
+    return registrations.filter((reg: ShiftRegistration) => {
+      return reg.shiftId === templateId && reg.registrationDate === dateStr && reg.status === 'REGISTERED';
+    });
+  };
+
+  const handleOpenRegistrationsModal = async (template: ShiftTemplate, day: number) => {
+    const date = getDateForDay(day);
+    setSelectedTemplate(template);
+    setSelectedDate(date);
+    setSelectedUserIds([]); // Reset selected users
+    setShowRegistrationsModal(true);
+    // Load registrations for this template and date
+    await loadRegistrationsForTemplate(template.id, date);
+  };
+
+  const [templateRegistrations, setTemplateRegistrations] = useState<ShiftRegistration[]>([]);
+
+  const loadRegistrationsForTemplate = async (templateId: number, date: Date) => {
+    try {
+      const response = await shiftRegistrationService.getRegisteredUsersForShift(templateId, formatDate(date));
+      setTemplateRegistrations(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to load registrations:', error);
+      setTemplateRegistrations([]);
+    }
   };
 
   const handleOpenEditModal = (shift: any) => {
@@ -220,6 +416,89 @@ const Shifts: React.FC = () => {
     setConfirmDelete(null);
   };
 
+  const handleDeleteTemplate = async (templateId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa ca mẫu này?')) return;
+    
+    try {
+      // Delete template by deleting the shift
+      await dispatch(deleteShift(templateId)).unwrap();
+      setToast({ show: true, message: 'Xóa ca mẫu thành công!', type: 'success' });
+      await loadTemplates();
+      await loadRegistrations();
+    } catch (err: any) {
+      setToast({ show: true, message: err?.response?.data?.message || err?.message || 'Có lỗi xảy ra!', type: 'error' });
+    }
+  };
+
+  const handleApproveAndCreateShift = async (userIds: number[]) => {
+    if (!selectedTemplate || !selectedDate || !selectedStoreId) return;
+
+    try {
+      const date = new Date(selectedDate);
+      const hours = parseInt(selectedTemplate.startTime.substring(0, 2));
+      const minutes = parseInt(selectedTemplate.startTime.substring(3, 5));
+      const endHours = parseInt(selectedTemplate.endTime.substring(0, 2));
+      const endMinutes = parseInt(selectedTemplate.endTime.substring(3, 5));
+
+      const startDatetime = new Date(date);
+      startDatetime.setHours(hours, minutes, 0, 0);
+      
+      const endDatetime = new Date(date);
+      endDatetime.setHours(endHours, endMinutes, 0, 0);
+
+      // Format datetime for API
+      const formatDateTimeForAPI = (dt: Date): string => {
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const minutes = String(dt.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}:00`;
+      };
+
+      // Create actual shift (only for this specific date, not template)
+      const shiftResponse = await dispatch(createShift({
+        storeId: selectedStoreId,
+        data: {
+          title: selectedTemplate.title,
+          startDatetime: formatDateTimeForAPI(startDatetime),
+          endDatetime: formatDateTimeForAPI(endDatetime),
+          requiredSlots: userIds.length
+        }
+      })).unwrap();
+
+      // Assign selected users
+      if (userIds.length > 0) {
+        await dispatch(assignStaffToShift({
+          shiftId: shiftResponse.id,
+          data: { userIds: userIds }
+        })).unwrap();
+      }
+
+      // Finalize the shift template for this date (lock registrations)
+      await shiftRegistrationService.finalizeShift(selectedTemplate.id, formatDate(selectedDate));
+
+      // Update finalized status
+      const finalizedKey = `${selectedTemplate.id}_${formatDate(selectedDate)}`;
+      setFinalizedShifts(prev => {
+        const newSet = new Set(prev);
+        newSet.add(finalizedKey);
+        return newSet;
+      });
+
+      setToast({ show: true, message: 'Đã tạo ca, phân công nhân viên và chốt ca thành công!', type: 'success' });
+      setShowRegistrationsModal(false);
+      setSelectedTemplate(null);
+      setSelectedDate(null);
+      setTemplateRegistrations([]);
+      setSelectedUserIds([]);
+      await loadRegistrations();
+      await loadTemplates();
+    } catch (err: any) {
+      setToast({ show: true, message: err?.response?.data?.message || err?.message || 'Có lỗi xảy ra!', type: 'error' });
+    }
+  };
+
   const getAssignmentStatus = (shift: any) => {
     const confirmed = shift.confirmedCount || 0;
     const required = shift.requiredSlots || 1;
@@ -236,13 +515,17 @@ const Shifts: React.FC = () => {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="mb-1">Lịch làm việc</h2>
-          <p className="text-muted mb-0">Quản lý ca làm việc tại cơ sở</p>
+          <h2 className="mb-1">Tạo ca mẫu</h2>
+          <p className="text-muted mb-0">
+            Tạo ca mẫu cho nhân viên đăng ký. Mỗi tuần quản lý sẽ chốt ca riêng biệt.
+          </p>
         </div>
-        <button className="btn btn-coffee" onClick={handleOpenModal}>
-          <i className="bi bi-plus-circle me-2"></i>
-          Tạo ca mới
-        </button>
+      </div>
+
+      <div className="alert alert-info mb-4">
+        <i className="bi bi-info-circle me-2"></i>
+        <strong>Lưu ý:</strong> Ca mẫu chỉ là mẫu cho nhân viên đăng ký. Mỗi tuần quản lý cần chốt ca riêng biệt để tạo ca thực tế. 
+        Khi xóa ca mẫu, chỉ xóa mẫu, không ảnh hưởng đến các ca thực tế đã được tạo.
       </div>
 
       {/* Store Filter */}
@@ -270,103 +553,156 @@ const Shifts: React.FC = () => {
         </div>
       </div>
 
-      {/* Shifts List */}
-      <div className="row g-3">
-        {shifts.map((shift) => (
-          <div key={shift.id} className="col-md-6 col-lg-4">
-            <div className={`shift-card ${getAssignmentStatus(shift) === 'success' ? 'confirmed' : ''}`}>
-              <div className="d-flex justify-content-between align-items-start mb-2">
-                <h5 className="mb-0">{shift.title}</h5>
-                <div className="dropdown">
-                  <button
-                    className="btn btn-sm btn-link p-0"
-                    data-bs-toggle="dropdown"
-                  >
-                    <i className="bi bi-three-dots-vertical"></i>
-                  </button>
-                  <ul className="dropdown-menu dropdown-menu-end">
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handleOpenEditModal(shift)}
-                      >
-                        <i className="bi bi-pencil me-2"></i>
-                        Chỉnh sửa
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => handleOpenAssignModal(shift)}
-                      >
-                        <i className="bi bi-people me-2"></i>
-                        Phân công
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        className="dropdown-item text-danger"
-                        onClick={() => setConfirmDelete(shift.id)}
-                      >
-                        <i className="bi bi-trash me-2"></i>
-                        Xóa
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              
-              <p className="mb-2 small text-muted">
-                <i className="bi bi-calendar me-2"></i>
-                {formatDateTime(shift.startDatetime)}
-              </p>
-              <p className="mb-2 small text-muted">
-                <i className="bi bi-clock me-2"></i>
-                {formatTime(shift.startDatetime)} - {formatTime(shift.endDatetime)}
-              </p>
-              
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <span className={`badge bg-${getAssignmentStatus(shift)}`}>
-                  {shift.confirmedCount}/{shift.requiredSlots} đã xác nhận
-                </span>
-                <button
-                  className="btn btn-sm btn-outline-coffee"
-                  onClick={() => handleOpenAssignModal(shift)}
-                >
-                  <i className="bi bi-people"></i>
-                </button>
-              </div>
-
-              {shift.assignments && shift.assignments.length > 0 && (
-                <div className="mt-3 pt-3 border-top">
-                  <small className="text-muted">Nhân viên:</small>
-                  <div className="mt-1">
-                    {shift.assignments.map((a: any) => (
-                      <span
-                        key={a.id}
-                        className={`badge me-1 mb-1 ${
-                          a.status === 'CONFIRMED' ? 'bg-success' :
-                          a.status === 'DECLINED' ? 'bg-danger' : 'bg-warning'
-                        }`}
-                      >
-                        {a.userName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {/* Week Navigation */}
+      <div className="card card-coffee mb-4">
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center">
+            <button
+              className="btn btn-outline-coffee"
+              onClick={() => {
+                const newWeek = new Date(weekStart);
+                newWeek.setDate(newWeek.getDate() - 7);
+                setWeekStart(newWeek);
+              }}
+            >
+              <i className="bi bi-chevron-left me-2"></i>
+              Tuần trước
+            </button>
+            <div className="text-center">
+              <h5 className="mb-0">
+                Tuần {weekStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} -{" "}
+                {new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })}
+              </h5>
             </div>
+            <button
+              className="btn btn-outline-coffee"
+              onClick={() => {
+                const newWeek = new Date(weekStart);
+                newWeek.setDate(newWeek.getDate() + 7);
+                setWeekStart(newWeek);
+              }}
+            >
+              Tuần sau
+              <i className="bi bi-chevron-right ms-2"></i>
+            </button>
           </div>
-        ))}
+        </div>
+      </div>
 
-        {shifts.length === 0 && (
-          <div className="col-12">
-            <div className="text-center py-5 text-muted">
-              <i className="bi bi-calendar-x fs-1 d-block mb-3"></i>
-              <p>Chưa có ca làm nào. Hãy tạo ca làm mới!</p>
-            </div>
+      {/* Week Table */}
+      <div className="card card-coffee">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-bordered table-hover mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th style={{ width: "120px" }}>Ca làm</th>
+                  {[1, 2, 3, 4, 5, 6, 7].map(day => {
+                    const date = getDateForDay(day);
+                    const isToday = formatDate(date) === formatDate(new Date());
+                    return (
+                      <th
+                        key={day}
+                        className={`text-center ${isToday ? "bg-light" : ""}`}
+                        style={{ minWidth: "150px" }}
+                      >
+                        <div>{getDayName(day)}</div>
+                        <div className="small text-muted">
+                          {date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {["MORNING", "AFTERNOON", "EVENING"].map(shiftType => {
+                  const shiftTypeLabels: Record<string, string> = {
+                    MORNING: "Ca sáng",
+                    AFTERNOON: "Ca chiều",
+                    EVENING: "Ca tối"
+                  };
+
+                  return (
+                    <tr key={shiftType}>
+                      <td className="align-middle fw-bold">
+                        {shiftTypeLabels[shiftType]}
+                      </td>
+                      {[1, 2, 3, 4, 5, 6, 7].map(day => {
+                        const dayTemplates = getTemplatesForDayAndType(day, shiftType);
+                        
+                        return (
+                          <td key={day} className="text-center align-middle" style={{ verticalAlign: 'top' }}>
+                            {dayTemplates.map((template: ShiftTemplate) => {
+                              const date = getDateForDay(day);
+                              const templateRegs = getRegistrationsForTemplateAndDate(template.id, date);
+                              const registrationCount = templateRegs.length;
+                              const isFinalized = finalizedShifts.has(`${template.id}_${formatDate(date)}`);
+                              
+                              return (
+                                <div key={template.id} className={`mb-2 p-2 border rounded ${isFinalized ? 'bg-success bg-opacity-10' : 'bg-light'}`}>
+                                  <div className="small fw-bold mb-1">{template.title}</div>
+                                  <div className="small text-muted mb-1">
+                                    {template.startTime.substring(0, 5)} - {template.endTime.substring(0, 5)}
+                                  </div>
+                                  <div className="small mb-1">
+                                    {isFinalized ? (
+                                      <span className="badge bg-success">
+                                        <i className="bi bi-lock-fill me-1"></i>
+                                        Đã chốt
+                                      </span>
+                                    ) : (
+                                      <span className="badge bg-info">
+                                        {registrationCount}/{template.requiredSlots || 1} đăng ký
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="d-flex gap-1 mt-1">
+                                    <button
+                                      className="btn btn-sm btn-outline-primary flex-grow-1"
+                                      onClick={() => handleOpenRegistrationsModal(template, day)}
+                                      style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
+                                      title="Xem đăng ký"
+                                      disabled={isFinalized}
+                                    >
+                                      <i className="bi bi-people"></i>
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-outline-danger flex-grow-1"
+                                      onClick={() => handleDeleteTemplate(template.id)}
+                                      style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
+                                      title="Xóa ca mẫu"
+                                    >
+                                      <i className="bi bi-trash"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {dayTemplates.length === 0 && (
+                              <button
+                                className="btn btn-sm btn-outline-secondary w-100"
+                                onClick={() => handleOpenCreateShiftModal(day, shiftType as 'MORNING' | 'AFTERNOON' | 'EVENING')}
+                                style={{ fontSize: '0.8rem', padding: '0.5rem' }}
+                              >
+                                <i className="bi bi-plus-circle me-1"></i>
+                                Tạo ca
+                              </button>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Create Shift Modal */}
@@ -742,6 +1078,255 @@ const Shifts: React.FC = () => {
                     }).length})
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop show"></div>
+        </>
+      )}
+
+      {/* View Registrations and Approve Modal */}
+      {showRegistrationsModal && selectedTemplate && selectedDate && (
+        <>
+          <div className="modal show d-block" tabIndex={-1}>
+            <div className="modal-dialog modal-lg">
+              <div className="modal-content modal-coffee">
+                <div className="modal-header">
+                  <h5 className="modal-title">
+                    Danh sách đăng ký - {selectedTemplate.title} - {selectedDate.toLocaleDateString('vi-VN')}
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => {
+                      setShowRegistrationsModal(false);
+                      setSelectedTemplate(null);
+                      setSelectedDate(null);
+                      setTemplateRegistrations([]);
+                    }}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <p className="text-muted mb-2">
+                      <strong>Thời gian:</strong> {selectedTemplate.startTime.substring(0, 5)} - {selectedTemplate.endTime.substring(0, 5)}
+                    </p>
+                    <p className="text-muted mb-2">
+                      <strong>Số người cần:</strong> {selectedTemplate.requiredSlots || 1}
+                    </p>
+                    <p className="text-muted mb-0">
+                      <strong>Số người đã đăng ký:</strong> {templateRegistrations.length}
+                    </p>
+                  </div>
+
+                  {templateRegistrations.length === 0 ? (
+                    <div className="alert alert-info">
+                      <i className="bi bi-info-circle me-2"></i>
+                      Chưa có nhân viên nào đăng ký ca này.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-3">
+                        <label className="form-label">Chọn nhân viên để duyệt/chốt ca:</label>
+                        <div className="list-group">
+                          {templateRegistrations.map((reg: ShiftRegistration) => {
+                            const staff = users.find((u) => u.id === reg.userId);
+                            if (!staff) return null;
+                            const isSelected = selectedUserIds.includes(reg.userId);
+                            
+                            return (
+                              <label
+                                key={reg.id}
+                                className={`list-group-item list-group-item-action d-flex align-items-center ${isSelected ? 'active' : ''}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input me-3"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      // Check if adding would exceed required slots
+                                      const currentSelected = selectedUserIds.length;
+                                      const requiredSlots = selectedTemplate.requiredSlots || 1;
+                                      if (currentSelected >= requiredSlots) {
+                                        setToast({
+                                          show: true,
+                                          message: `Ca này chỉ cần ${requiredSlots} người. Vui lòng bỏ chọn một số người khác.`,
+                                          type: 'warning'
+                                        });
+                                        return;
+                                      }
+                                      setSelectedUserIds([...selectedUserIds, reg.userId]);
+                                    } else {
+                                      setSelectedUserIds(selectedUserIds.filter((id) => id !== reg.userId));
+                                    }
+                                  }}
+                                />
+                                <div className="avatar me-2">{staff.fullName.charAt(0)}</div>
+                                <div className="flex-grow-1">
+                                  <strong>{staff.fullName}</strong>
+                                  <br />
+                                  <small className="text-muted">{staff.email}</small>
+                                  <br />
+                                  <small className="text-muted">
+                                    Đăng ký lúc: {new Date(reg.registeredAt).toLocaleString('vi-VN')}
+                                  </small>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="alert alert-warning">
+                        <i className="bi bi-exclamation-triangle me-2"></i>
+                        Bạn đã chọn <strong>{selectedUserIds.length}</strong> / <strong>{selectedTemplate.requiredSlots || 1}</strong> người.
+                        {selectedUserIds.length < (selectedTemplate.requiredSlots || 1) && (
+                          <span className="ms-2">Vui lòng chọn đủ số người cần trước khi chốt ca.</span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowRegistrationsModal(false);
+                      setSelectedTemplate(null);
+                      setSelectedDate(null);
+                      setTemplateRegistrations([]);
+                      setSelectedUserIds([]);
+                    }}
+                  >
+                    Hủy
+                  </button>
+                  {templateRegistrations.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-coffee"
+                      onClick={() => handleApproveAndCreateShift(selectedUserIds)}
+                      disabled={selectedUserIds.length === 0 || selectedUserIds.length !== (selectedTemplate.requiredSlots || 1)}
+                    >
+                      <i className="bi bi-check-circle me-2"></i>
+                      Chốt ca ({selectedUserIds.length}/{selectedTemplate.requiredSlots || 1})
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop show"></div>
+        </>
+      )}
+
+      {/* Create Shift Template Modal */}
+      {showCreateShiftModal && selectedDay && selectedShiftType && (
+        <>
+          <div className="modal show d-block" tabIndex={-1}>
+            <div className="modal-dialog">
+              <div className="modal-content modal-coffee">
+                <div className="modal-header">
+                  <h5 className="modal-title">
+                    Tạo ca mẫu - {getDayName(selectedDay)} - {selectedShiftType === 'MORNING' ? 'Ca sáng' : selectedShiftType === 'AFTERNOON' ? 'Ca chiều' : 'Ca tối'}
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => {
+                      setShowCreateShiftModal(false);
+                      setSelectedDay(null);
+                      setSelectedShiftType(null);
+                    }}
+                  ></button>
+                </div>
+                <form onSubmit={handleCreateShiftTemplate}>
+                  <div className="modal-body">
+                    <div className="alert alert-info mb-3">
+                      <i className="bi bi-info-circle me-2"></i>
+                      <strong>Lưu ý:</strong> Đây là ca mẫu cho nhân viên đăng ký. Ca mẫu sẽ hiển thị cho tất cả các tuần. 
+                      Mỗi tuần quản lý cần chốt ca riêng biệt để tạo ca thực tế cho tuần đó.
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Tên ca *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={shiftTemplateForm.title}
+                        onChange={(e) =>
+                          setShiftTemplateForm({ ...shiftTemplateForm, title: e.target.value })
+                        }
+                        placeholder="VD: Ca sáng, Ca chiều..."
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Thời gian bắt đầu *</label>
+                      <input
+                        type="time"
+                        className="form-control"
+                        value={shiftTemplateForm.startTime}
+                        onChange={(e) =>
+                          setShiftTemplateForm({ ...shiftTemplateForm, startTime: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Thời gian kết thúc *</label>
+                      <input
+                        type="time"
+                        className="form-control"
+                        value={shiftTemplateForm.endTime}
+                        onChange={(e) =>
+                          setShiftTemplateForm({ ...shiftTemplateForm, endTime: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Số nhân viên cần *</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={shiftTemplateForm.requiredSlots}
+                        onChange={(e) =>
+                          setShiftTemplateForm({ ...shiftTemplateForm, requiredSlots: Number(e.target.value) })
+                        }
+                        min="1"
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Ghi chú</label>
+                      <textarea
+                        className="form-control"
+                        rows={3}
+                        value={shiftTemplateForm.notes || ''}
+                        onChange={(e) =>
+                          setShiftTemplateForm({ ...shiftTemplateForm, notes: e.target.value })
+                        }
+                        placeholder="Nhập ghi chú cho ca làm này..."
+                      />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setShowCreateShiftModal(false);
+                        setSelectedDay(null);
+                        setSelectedShiftType(null);
+                      }}
+                    >
+                      Hủy
+                    </button>
+                    <button type="submit" className="btn btn-coffee">
+                      Xác nhận
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>

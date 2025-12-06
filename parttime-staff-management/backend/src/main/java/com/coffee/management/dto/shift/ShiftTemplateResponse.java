@@ -23,6 +23,7 @@ public class ShiftTemplateResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private Integer requiredSlots;
+    private String notes;
     private Long createdById;
     private String createdByName;
 
@@ -42,6 +43,7 @@ public class ShiftTemplateResponse {
                 .startTime(startTime)
                 .endTime(endTime)
                 .requiredSlots(shift.getRequiredSlots())
+                .notes(shift.getNotes())
                 .createdById(shift.getCreatedBy() != null ? shift.getCreatedBy().getId() : null)
                 .createdByName(shift.getCreatedBy() != null ? shift.getCreatedBy().getFullName() : null)
                 .build();

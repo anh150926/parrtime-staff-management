@@ -17,6 +17,7 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
   const [myRegistrations, setMyRegistrations] = useState<ShiftRegistrationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState<Date>(getWeekStart(new Date()));
+  const [finalizedShifts, setFinalizedShifts] = useState<Set<string>>(new Set()); // Store "templateId_date" as key
   const [toast, setToast] = useState<{
     show: boolean;
     message: string;
@@ -75,6 +76,23 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
       
       setTemplates(templatesRes.data || []);
       setMyRegistrations(registrationsRes.data || []);
+      
+      // Load finalized status for all templates and dates in this week
+      const finalizedSet = new Set<string>();
+      for (const template of templatesRes.data || []) {
+        for (let day = 1; day <= 7; day++) {
+          const date = getDateForDay(day);
+          try {
+            const finalizedResponse = await shiftRegistrationService.isShiftFinalized(template.id, formatDate(date));
+            if (finalizedResponse.data) {
+              finalizedSet.add(`${template.id}_${formatDate(date)}`);
+            }
+          } catch (error) {
+            // Ignore errors
+          }
+        }
+      }
+      setFinalizedShifts(finalizedSet);
     } catch (error: any) {
       setToast({
         show: true,
@@ -87,6 +105,21 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
   };
 
   const handleRegister = async (template: ShiftTemplate, date: Date) => {
+    // Check if date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const registerDate = new Date(date);
+    registerDate.setHours(0, 0, 0, 0);
+    
+    if (registerDate < today) {
+      setToast({
+        show: true,
+        message: "Không thể đăng ký ca đã qua. Chỉ có thể đăng ký ca trong tương lai.",
+        type: "error"
+      });
+      return;
+    }
+
     try {
       await shiftRegistrationService.registerShift(template.id, {
         shiftTemplateId: template.id,
@@ -241,20 +274,47 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
                                   <div className="small text-muted mb-2">
                                     {template.startTime.substring(0, 5)} - {template.endTime.substring(0, 5)}
                                   </div>
-                                  {registered ? (
-                                    <span className="badge bg-success">
-                                      <i className="bi bi-check-circle me-1"></i>
-                                      Đã đăng ký
-                                    </span>
-                                  ) : (
-                                    <button
-                                      className="btn btn-sm btn-coffee"
-                                      onClick={() => handleRegister(template, date)}
-                                    >
-                                      <i className="bi bi-check-lg me-1"></i>
-                                      Đăng ký
-                                    </button>
-                                  )}
+                                  {(() => {
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    const registerDate = new Date(date);
+                                    registerDate.setHours(0, 0, 0, 0);
+                                    const isPast = registerDate < today;
+                                    const isFinalized = finalizedShifts.has(`${template.id}_${formatDate(date)}`);
+                                    
+                                    if (registered) {
+                                      return (
+                                        <span className="badge bg-success">
+                                          <i className="bi bi-check-circle me-1"></i>
+                                          Đã đăng ký
+                                        </span>
+                                      );
+                                    } else if (isFinalized) {
+                                      return (
+                                        <span className="badge bg-warning">
+                                          <i className="bi bi-lock-fill me-1"></i>
+                                          Đã chốt
+                                        </span>
+                                      );
+                                    } else if (isPast) {
+                                      return (
+                                        <span className="badge bg-secondary">
+                                          <i className="bi bi-lock me-1"></i>
+                                          Đã qua
+                                        </span>
+                                      );
+                                    } else {
+                                      return (
+                                        <button
+                                          className="btn btn-sm btn-coffee"
+                                          onClick={() => handleRegister(template, date)}
+                                        >
+                                          <i className="bi bi-check-lg me-1"></i>
+                                          Đăng ký
+                                        </button>
+                                      );
+                                    }
+                                  })()}
                                 </div>
                               );
                             })}

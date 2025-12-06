@@ -52,6 +52,9 @@ public class Shift {
     @Column(name = "day_of_week")
     private Integer dayOfWeek; // 1=Monday, 7=Sunday
 
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

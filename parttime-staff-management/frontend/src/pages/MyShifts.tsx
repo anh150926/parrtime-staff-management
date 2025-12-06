@@ -21,7 +21,24 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
   const [selectedShift, setSelectedShift] = useState<any>(null);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkedOutShiftIds, setCheckedOutShiftIds] = useState<number[]>([]);
+  const [weekStart, setWeekStart] = useState<Date>(getWeekStart(new Date()));
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ show: false, message: '', type: 'success' });
+
+  function getWeekStart(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    return new Date(d.setDate(diff));
+  }
+
+  function formatDate(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
+  function getDayName(dayOfWeek: number): string {
+    const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    return days[dayOfWeek === 7 ? 0 : dayOfWeek];
+  }
 
   useEffect(() => {
     dispatch(fetchMyShifts());
@@ -36,7 +53,7 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
         console.error('Failed to parse checked-out shifts:', e);
       }
     }
-  }, [dispatch]);
+  }, [dispatch, weekStart]);
 
   const loadCurrentCheckIn = async () => {
     try {
@@ -180,6 +197,38 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
     return assignment?.status !== 'DECLINED';
   });
 
+  // Helper functions for weekly timetable
+  const getDateForDay = (dayOfWeek: number): Date => {
+    const date = new Date(weekStart);
+    const diff = dayOfWeek - 1; // dayOfWeek is 1-7, we need 0-6
+    date.setDate(date.getDate() + diff);
+    return date;
+  };
+
+  const getShiftsForDay = (dayOfWeek: number): any[] => {
+    const date = getDateForDay(dayOfWeek);
+    const dateStr = formatDate(date);
+    
+    return filteredShifts.filter((shift: any) => {
+      const shiftDate = new Date(shift.startDatetime);
+      const shiftDateStr = formatDate(shiftDate);
+      return shiftDateStr === dateStr;
+    }).sort((a: any, b: any) => {
+      const timeA = new Date(a.startDatetime).getTime();
+      const timeB = new Date(b.startDatetime).getTime();
+      return timeA - timeB;
+    });
+  };
+
+  const getShiftTypeFromTime = (startTime: string): string => {
+    const hour = new Date(startTime).getHours();
+    if (hour < 12) return 'MORNING';
+    if (hour < 18) return 'AFTERNOON';
+    return 'EVENING';
+  };
+
+  const weekDays = [1, 2, 3, 4, 5, 6, 7]; // Monday to Sunday
+
   return (
     <div>
       {!hideHeader && (
@@ -239,154 +288,196 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
         </div>
       )}
 
-      {/* Danh sách ca làm */}
-      <div className="row g-3">
-        {filteredShifts.map((shift: any) => {
-          const assignment = getMyAssignment(shift);
-          const isActive = isCheckedInThisShift(shift);
-          const isCheckedOut = checkedOutShiftIds.includes(shift.id);
-          const isCheckedIn = checkedInShiftIds.includes(shift.id) || currentCheckIn?.shiftId === shift.id;
-          const missedCheckIn = isMissedCheckIn(shift);
-          const isLate = isLateCheckIn(shift);
-          const checkInAvailable = canCheckIn(shift) && !currentCheckIn && !isCheckedOut && !isCheckedIn && !missedCheckIn;
-          
-          // Ẩn ca đang active (đã hiển thị ở trên)
-          if (isActive) return null;
-          
-          return (
-            <div key={shift.id} className="col-md-6 col-lg-4">
-              <div 
-                className={`shift-card ${assignment?.status === 'CONFIRMED' ? 'confirmed' : 'pending'} ${checkInAvailable ? 'cursor-pointer' : ''} ${isCheckedOut ? 'opacity-75' : ''} ${isCheckedIn ? 'border-warning' : ''} ${missedCheckIn ? 'opacity-75' : ''}`}
-                onClick={() => checkInAvailable ? handleOpenCheckInModal(shift) : null}
-                style={{ cursor: checkInAvailable ? 'pointer' : 'default' }}
-              >
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <h5 className="mb-0">{shift.title}</h5>
-                  {checkInAvailable && (
-                    <span className="badge bg-success">
-                      <i className="bi bi-clock me-1"></i>
-                      Sẵn sàng
-                    </span>
-                  )}
-                  {isCheckedIn && !isCheckedOut && (
-                    <>
-                      {isLate ? (
-                        <span className="badge bg-warning text-dark">
-                          <i className="bi bi-exclamation-triangle me-1"></i>
-                          Đi muộn
-                        </span>
-                      ) : (
-                        <span className="badge bg-warning text-dark">
-                          <i className="bi bi-hourglass-split me-1"></i>
-                          Đang làm
-                        </span>
-                      )}
-                    </>
-                  )}
-                  {missedCheckIn && (
-                    <span className="badge bg-danger">
-                      <i className="bi bi-x-circle me-1"></i>
-                      Nghỉ
-                    </span>
-                  )}
-                  {isCheckedOut && (
-                    <span className="badge bg-secondary">
-                      <i className="bi bi-check-circle me-1"></i>
-                      Đã hoàn thành
-                    </span>
-                  )}
-                </div>
-                
-                <p className="mb-1 small">
-                  <i className="bi bi-shop me-2"></i>
-                  {shift.storeName}
-                </p>
-                <p className="mb-1 small text-muted">
-                  <i className="bi bi-calendar me-2"></i>
-                  {formatDateTime(shift.startDatetime)}
-                </p>
-                <p className="mb-3 small text-muted">
-                  <i className="bi bi-clock me-2"></i>
-                  {formatTime(shift.startDatetime)} - {formatTime(shift.endDatetime)}
-                </p>
-
-                {assignment && (
-                  <div>
-                    {assignment.status === 'ASSIGNED' && !isCheckedOut && !isCheckedIn && !missedCheckIn && (
-                      <div className="d-flex gap-2">
-                        <button
-                          className="btn btn-sm btn-success flex-grow-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleConfirmShift(shift.id, 'CONFIRMED');
-                          }}
-                        >
-                          <i className="bi bi-check me-1"></i>
-                          Xác nhận
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger flex-grow-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleConfirmShift(shift.id, 'DECLINED');
-                          }}
-                        >
-                          <i className="bi bi-x me-1"></i>
-                          Từ chối
-                        </button>
-                      </div>
-                    )}
-                    {assignment.status === 'CONFIRMED' && !checkInAvailable && !isCheckedOut && !isCheckedIn && !missedCheckIn && (
-                      <span className="badge bg-success w-100 py-2">
-                        <i className="bi bi-check-circle me-1"></i>
-                        Đã xác nhận
-                      </span>
-                    )}
-                    {assignment.status === 'CONFIRMED' && checkInAvailable && (
-                      <button 
-                        className="btn btn-success w-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenCheckInModal(shift);
-                        }}
-                      >
-                        <i className="bi bi-box-arrow-in-right me-1"></i>
-                        Nhấn để Check-in
-                      </button>
-                    )}
-                    {missedCheckIn && (
-                      <span className="badge bg-danger w-100 py-2">
-                        <i className="bi bi-x-circle me-1"></i>
-                        Nghỉ
-                      </span>
-                    )}
-                    {isCheckedIn && !isCheckedOut && (
-                      <span className="badge bg-warning text-dark w-100 py-2">
-                        <i className="bi bi-hourglass-split me-1"></i>
-                        Đang làm
-                      </span>
-                    )}
-                    {isCheckedOut && (
-                      <span className="badge bg-secondary w-100 py-2">
-                        <i className="bi bi-check-circle-fill me-1"></i>
-                        Đã hoàn thành
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+      {/* Week Navigation */}
+      <div className="card card-coffee mb-4">
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center">
+            <button
+              className="btn btn-outline-coffee"
+              onClick={() => {
+                const newWeek = new Date(weekStart);
+                newWeek.setDate(newWeek.getDate() - 7);
+                setWeekStart(newWeek);
+              }}
+            >
+              <i className="bi bi-chevron-left me-2"></i>
+              Tuần trước
+            </button>
+            <div className="text-center">
+              <h5 className="mb-0">
+                Tuần {weekStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} -{" "}
+                {new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('vi-VN', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })}
+              </h5>
             </div>
-          );
-        })}
-
-        {filteredShifts.length === 0 && !currentCheckIn && (
-          <div className="col-12">
-            <div className="text-center py-5 text-muted">
-              <i className="bi bi-calendar-x fs-1 d-block mb-3"></i>
-              <p>Bạn chưa được phân công ca làm nào</p>
-            </div>
+            <button
+              className="btn btn-outline-coffee"
+              onClick={() => {
+                const newWeek = new Date(weekStart);
+                newWeek.setDate(newWeek.getDate() + 7);
+                setWeekStart(newWeek);
+              }}
+            >
+              Tuần sau
+              <i className="bi bi-chevron-right ms-2"></i>
+            </button>
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Week Table */}
+      <div className="card card-coffee">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-bordered table-hover mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th style={{ width: "120px" }}>Ca làm</th>
+                  {weekDays.map(day => {
+                    const date = getDateForDay(day);
+                    const isToday = formatDate(date) === formatDate(new Date());
+                    return (
+                      <th
+                        key={day}
+                        className={`text-center ${isToday ? "bg-light" : ""}`}
+                        style={{ minWidth: "150px" }}
+                      >
+                        <div>{getDayName(day)}</div>
+                        <div className="small text-muted">
+                          {date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {["MORNING", "AFTERNOON", "EVENING"].map(shiftType => {
+                  const shiftTypeLabels: Record<string, string> = {
+                    MORNING: "Ca sáng",
+                    AFTERNOON: "Ca chiều",
+                    EVENING: "Ca tối"
+                  };
+
+                  return (
+                    <tr key={shiftType}>
+                      <td className="align-middle fw-bold">
+                        {shiftTypeLabels[shiftType]}
+                      </td>
+                      {weekDays.map(day => {
+                        const date = getDateForDay(day);
+                        const dayShifts = getShiftsForDay(day).filter((shift: any) => {
+                          return getShiftTypeFromTime(shift.startDatetime) === shiftType;
+                        });
+                        
+                        return (
+                          <td key={day} className="text-center align-middle" style={{ verticalAlign: 'top' }}>
+                            {dayShifts.map((shift: any) => {
+                              const assignment = getMyAssignment(shift);
+                              const isActive = isCheckedInThisShift(shift);
+                              const isCheckedOut = checkedOutShiftIds.includes(shift.id);
+                              const isCheckedIn = checkedInShiftIds.includes(shift.id) || currentCheckIn?.shiftId === shift.id;
+                              const missedCheckIn = isMissedCheckIn(shift);
+                              const checkInAvailable = canCheckIn(shift) && !currentCheckIn && !isCheckedOut && !isCheckedIn && !missedCheckIn;
+                              
+                              // Skip active shift (shown at top)
+                              if (isActive) return null;
+
+                              let statusBadge = null;
+                              let statusClass = '';
+                              
+                              if (assignment?.status === 'ASSIGNED') {
+                                statusBadge = <span className="badge bg-warning">Chờ xác nhận</span>;
+                                statusClass = 'pending';
+                              } else if (assignment?.status === 'CONFIRMED') {
+                                if (checkInAvailable) {
+                                  statusBadge = <span className="badge bg-success">Sẵn sàng</span>;
+                                  statusClass = 'available';
+                                } else if (isCheckedIn) {
+                                  statusBadge = <span className="badge bg-info">Đang làm</span>;
+                                  statusClass = 'working';
+                                } else if (missedCheckIn) {
+                                  statusBadge = <span className="badge bg-danger">Nghỉ</span>;
+                                  statusClass = 'missed';
+                                } else {
+                                  statusBadge = <span className="badge bg-success">Đã xác nhận</span>;
+                                  statusClass = 'confirmed';
+                                }
+                              } else if (isCheckedOut) {
+                                statusBadge = <span className="badge bg-secondary">Hoàn thành</span>;
+                                statusClass = 'completed';
+                              }
+
+                              return (
+                                <div 
+                                  key={shift.id} 
+                                  className={`mb-2 p-2 border rounded ${statusClass} ${checkInAvailable ? 'cursor-pointer' : ''}`}
+                                  style={{ 
+                                    cursor: checkInAvailable ? 'pointer' : 'default',
+                                    backgroundColor: statusClass === 'available' ? '#d4edda' : statusClass === 'working' ? '#d1ecf1' : statusClass === 'missed' ? '#f8d7da' : statusClass === 'completed' ? '#e2e3e5' : '#fff3cd'
+                                  }}
+                                  onClick={() => checkInAvailable ? handleOpenCheckInModal(shift) : null}
+                                >
+                                  <div className="small fw-bold mb-1">{shift.title}</div>
+                                  <div className="small text-muted mb-1">
+                                    {formatTime(shift.startDatetime)} - {formatTime(shift.endDatetime)}
+                                  </div>
+                                  <div className="mb-1">{statusBadge}</div>
+                                  {assignment?.status === 'ASSIGNED' && !isCheckedOut && !isCheckedIn && !missedCheckIn && (
+                                    <div className="d-flex gap-1 mt-1">
+                                      <button
+                                        className="btn btn-sm btn-success flex-grow-1"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleConfirmShift(shift.id, 'CONFIRMED');
+                                        }}
+                                        style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
+                                      >
+                                        <i className="bi bi-check"></i>
+                                      </button>
+                                      <button
+                                        className="btn btn-sm btn-outline-danger flex-grow-1"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleConfirmShift(shift.id, 'DECLINED');
+                                        }}
+                                        style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
+                                      >
+                                        <i className="bi bi-x"></i>
+                                      </button>
+                                    </div>
+                                  )}
+                                  {assignment?.status === 'CONFIRMED' && checkInAvailable && (
+                                    <button 
+                                      className="btn btn-sm btn-success w-100 mt-1"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenCheckInModal(shift);
+                                      }}
+                                      style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
+                                    >
+                                      Check-in
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {dayShifts.length === 0 && (
+                              <span className="text-muted small">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* Modal Check-in */}

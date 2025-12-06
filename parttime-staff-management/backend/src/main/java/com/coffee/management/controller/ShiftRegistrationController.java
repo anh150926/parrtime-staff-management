@@ -92,4 +92,24 @@ public class ShiftRegistrationController {
         registrationService.cancelRegistration(registrationId, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Registration cancelled successfully", null));
     }
+
+    @PostMapping("/shift-templates/{templateId}/finalize")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
+    @Operation(summary = "Finalize shift (lock registrations for a specific date)")
+    public ResponseEntity<ApiResponse<Void>> finalizeShift(
+            @PathVariable Long templateId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate finalizationDate,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        registrationService.finalizeShift(templateId, finalizationDate, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Shift finalized successfully", null));
+    }
+
+    @GetMapping("/shift-templates/{templateId}/is-finalized")
+    @Operation(summary = "Check if shift is finalized for a specific date")
+    public ResponseEntity<ApiResponse<Boolean>> isShiftFinalized(
+            @PathVariable Long templateId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        boolean isFinalized = registrationService.isShiftFinalized(templateId, date);
+        return ResponseEntity.ok(ApiResponse.success(isFinalized));
+    }
 }

@@ -11,6 +11,7 @@ export interface ShiftTemplate {
   startTime: string;
   endTime: string;
   requiredSlots: number;
+  notes?: string;
   createdById?: number;
   createdByName?: string;
 }
@@ -34,6 +35,7 @@ export interface CreateShiftTemplateRequest {
   startTime: string;
   endTime: string;
   requiredSlots?: number;
+  notes?: string;
 }
 
 export interface RegisterShiftRequest {
@@ -82,6 +84,20 @@ const shiftRegistrationService = {
 
   cancelRegistration: async (registrationId: number): Promise<ApiResponse<void>> => {
     const response = await api.delete<ApiResponse<void>>(`/shift-registrations/${registrationId}`);
+    return response.data;
+  },
+
+  finalizeShift: async (templateId: number, finalizationDate: string): Promise<ApiResponse<void>> => {
+    const response = await api.post<ApiResponse<void>>(`/shift-templates/${templateId}/finalize`, null, {
+      params: { finalizationDate }
+    });
+    return response.data;
+  },
+
+  isShiftFinalized: async (templateId: number, date: string): Promise<ApiResponse<boolean>> => {
+    const response = await api.get<ApiResponse<boolean>>(`/shift-templates/${templateId}/is-finalized`, {
+      params: { date }
+    });
     return response.data;
   },
 };

@@ -46,6 +46,9 @@ public class ShiftService {
     @Autowired
     private ShiftRegistrationRepository registrationRepository;
 
+    @Autowired
+    private ShiftFinalizationRepository finalizationRepository;
+
     /**
      * Get shifts by store
      */
@@ -207,10 +210,33 @@ public class ShiftService {
             }
         }
 
+        // If deleting a template, check if there are any finalized shifts
+        if (shift.getIsTemplate() != null && shift.getIsTemplate()) {
+            // Check if there are any finalized shifts for this template
+            // If there are finalized shifts, it means actual shifts have been created, so allow deletion
+            // If there are active registrations but no finalized shifts, warn but allow deletion
+            List<com.coffee.management.entity.ShiftFinalization> finalizations = 
+                    finalizationRepository.findByShiftTemplateId(shift.getId());
+            
+            if (finalizations.isEmpty()) {
+                // No finalized shifts, check if there are active registrations
+                List<com.coffee.management.entity.ShiftRegistration> registrations = 
+                        registrationRepository.findByShiftIdAndStatus(shift.getId(), 
+                                com.coffee.management.entity.RegistrationStatus.REGISTERED);
+                
+                if (!registrations.isEmpty()) {
+                    // Allow deletion but warn - registrations will be cancelled
+                    // The template can still be deleted as actual shifts haven't been created yet
+                }
+            }
+            // If there are finalized shifts, allow deletion because actual shifts have been created
+        }
+
         shiftRepository.delete(shift);
         
+        String shiftType = (shift.getIsTemplate() != null && shift.getIsTemplate()) ? "template" : "shift";
         auditService.log(currentUser.getId(), "DELETE", "SHIFT", id, 
-                "Deleted shift: " + shift.getTitle());
+                "Deleted " + shiftType + ": " + shift.getTitle());
     }
 
     /**

@@ -19,4 +19,5 @@ public class CreateShiftTemplateRequest {
     private LocalTime startTime;
     private LocalTime endTime;
     private Integer requiredSlots;
+    private String notes;
 }
