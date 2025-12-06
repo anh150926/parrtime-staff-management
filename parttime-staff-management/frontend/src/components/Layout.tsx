@@ -3,14 +3,14 @@ import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../app/store";
 import { logout } from "../features/auth/authSlice";
-import { fetchUnreadCount } from "../features/notifications/notificationSlice";
+import { fetchNotifications, fetchUnreadCount, markAsRead } from "../features/notifications/notificationSlice";
 
 const Layout: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { unreadCount } = useSelector(
+  const { unreadCount, notifications, loading } = useSelector(
     (state: RootState) => state.notifications
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -41,12 +41,25 @@ const Layout: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchUnreadCount());
+    dispatch(fetchNotifications());
     // Fetch every 30 seconds
     const interval = setInterval(() => {
       dispatch(fetchUnreadCount());
+      dispatch(fetchNotifications());
     }, 30000);
     return () => clearInterval(interval);
   }, [dispatch]);
+
+  const handleNotificationClick = async (notification: any) => {
+    if (!notification) return;
+    if (!notification.isRead) {
+      await dispatch(markAsRead(notification.id));
+      dispatch(fetchUnreadCount());
+    }
+    if (notification.link) {
+      navigate(notification.link);
+    }
+  };
 
   const handleLogout = async () => {
     await dispatch(logout());
@@ -96,24 +109,62 @@ const Layout: React.FC = () => {
           </a>
 
           <div className="d-flex align-items-center">
-            {/* Notifications */}
-            <div className="dropdown me-3">
-              <button
-                className="btn btn-link text-white position-relative"
-                data-bs-toggle="dropdown"
-              >
-                <i className="bi bi-bell fs-5"></i>
-                {unreadCount > 0 && (
-                  <span className="notification-badge">{unreadCount}</span>
-                )}
-              </button>
+            {/* Notifications - Show for all users */}
+            {(user?.role === "MANAGER" || user?.role === "STAFF") && (
+              <div className="dropdown me-3">
+                <button
+                  className="btn btn-link text-white position-relative"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <i className="bi bi-bell fs-5"></i>
+                  {unreadCount > 0 && (
+                    <span className="notification-badge">{unreadCount}</span>
+                  )}
+                </button>
               <div
                 className="dropdown-menu dropdown-menu-end"
                 style={{ width: "300px" }}
               >
                 <h6 className="dropdown-header">Thông báo</h6>
+                {loading && (
+                  <div className="text-center py-2">
+                    <div className="spinner-border spinner-border-sm text-coffee" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                )}
+                {!loading && notifications.length === 0 && (
+                  <div className="text-center text-muted py-3 small">
+                    <i className="bi bi-bell-slash d-block fs-4 mb-1"></i>
+                    Không có thông báo
+                  </div>
+                )}
+                {!loading &&
+                  notifications.slice(0, 5).map((n) => (
+                    <button
+                      key={n.id}
+                      className={`dropdown-item d-flex align-items-start ${!n.isRead ? "bg-light" : ""}`}
+                      onClick={() => handleNotificationClick(n)}
+                      style={{ whiteSpace: "normal", textAlign: "left" }}
+                    >
+                      <div className={`me-2 ${!n.isRead ? "text-primary" : "text-muted"}`}>
+                        <i className={`bi ${n.isRead ? "bi-bell" : "bi-bell-fill"}`}></i>
+                      </div>
+                      <div className="flex-grow-1">
+                        <div className={`fw-semibold ${!n.isRead ? "text-dark" : ""}`}>{n.title}</div>
+                        {n.message && <div className="small text-muted">{n.message}</div>}
+                        <div className="small text-muted">{new Date(n.createdAt).toLocaleString("vi-VN")}</div>
+                      </div>
+                    </button>
+                  ))}
+                <div className="dropdown-divider"></div>
+                <NavLink to="/notifications" className="dropdown-item text-center">
+                  Xem tất cả
+                </NavLink>
               </div>
             </div>
+            )}
 
             {/* User Menu */}
             <div className="dropdown">
@@ -372,6 +423,22 @@ const Layout: React.FC = () => {
             <i className="bi bi-exclamation-triangle"></i>
             Khiếu nại
           </NavLink>
+
+          {/* Notifications for Manager and Staff */}
+          {(user?.role === "MANAGER" || user?.role === "STAFF") && (
+            <NavLink
+              to="/notifications"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+              style={{ display: 'block' }}
+            >
+              <i className="bi bi-bell"></i>
+              Thông báo
+              {unreadCount > 0 && (
+                <span className="badge bg-danger ms-2">{unreadCount}</span>
+              )}
+            </NavLink>
+          )}
 
           {/* Send Notification for Owner */}
           {user?.role === "OWNER" && (
