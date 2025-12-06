@@ -1,4 +1,5 @@
 import api from './axios';
+import { ApiResponse } from './authService';
 
 export type ComplaintType = 'SALARY' | 'SCHEDULE' | 'WORKPLACE' | 'COLLEAGUE' | 'MANAGEMENT' | 'OTHER';
 export type ComplaintStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED' | 'CLOSED';
@@ -33,40 +34,58 @@ export interface RespondComplaintRequest {
 
 const complaintService = {
   // Staff: Create complaint
-  createComplaint: (data: CreateComplaintRequest) =>
-    api.post<Complaint>('/complaints', data),
+  createComplaint: async (data: CreateComplaintRequest): Promise<ApiResponse<Complaint>> => {
+    const response = await api.post<ApiResponse<Complaint>>('/complaints', data);
+    return response.data;
+  },
 
   // Staff: Get my complaints
-  getMyComplaints: () =>
-    api.get<Complaint[]>('/complaints/my-complaints'),
+  getMyComplaints: async (): Promise<ApiResponse<Complaint[]>> => {
+    const response = await api.get<ApiResponse<Complaint[]>>('/complaints/my-complaints');
+    return response.data;
+  },
 
   // Manager/Owner: Get complaints by store
-  getComplaintsByStore: (storeId: number) =>
-    api.get<Complaint[]>(`/complaints/store/${storeId}`),
+  getComplaintsByStore: async (storeId: number): Promise<ApiResponse<Complaint[]>> => {
+    const response = await api.get<ApiResponse<Complaint[]>>(`/complaints/store/${storeId}`);
+    return response.data;
+  },
 
   // Owner: Get all complaints
-  getAllComplaints: () =>
-    api.get<Complaint[]>('/complaints'),
+  getAllComplaints: async (): Promise<ApiResponse<Complaint[]>> => {
+    const response = await api.get<ApiResponse<Complaint[]>>('/complaints');
+    return response.data;
+  },
 
   // Manager/Owner: Get pending complaints by store
-  getPendingComplaints: (storeId: number) =>
-    api.get<Complaint[]>(`/complaints/pending/store/${storeId}`),
+  getPendingComplaints: async (storeId: number): Promise<ApiResponse<Complaint[]>> => {
+    const response = await api.get<ApiResponse<Complaint[]>>(`/complaints/pending/store/${storeId}`);
+    return response.data;
+  },
 
   // Owner: Get all pending complaints
-  getAllPendingComplaints: () =>
-    api.get<Complaint[]>('/complaints/pending'),
+  getAllPendingComplaints: async (): Promise<ApiResponse<Complaint[]>> => {
+    const response = await api.get<ApiResponse<Complaint[]>>('/complaints/pending');
+    return response.data;
+  },
 
   // Get complaint by ID
-  getComplaintById: (id: number) =>
-    api.get<Complaint>(`/complaints/${id}`),
+  getComplaintById: async (id: number): Promise<ApiResponse<Complaint>> => {
+    const response = await api.get<ApiResponse<Complaint>>(`/complaints/${id}`);
+    return response.data;
+  },
 
   // Manager/Owner: Respond to complaint
-  respondToComplaint: (id: number, data: RespondComplaintRequest) =>
-    api.post<Complaint>(`/complaints/${id}/respond`, data),
+  respondToComplaint: async (id: number, data: RespondComplaintRequest): Promise<ApiResponse<Complaint>> => {
+    const response = await api.post<ApiResponse<Complaint>>(`/complaints/${id}/respond`, data);
+    return response.data;
+  },
 
   // Get pending count
-  getPendingCount: (storeId: number) =>
-    api.get<{ count: number }>(`/complaints/count/pending/store/${storeId}`),
+  getPendingCount: async (storeId: number): Promise<ApiResponse<{ count: number }>> => {
+    const response = await api.get<ApiResponse<{ count: number }>>(`/complaints/count/pending/store/${storeId}`);
+    return response.data;
+  },
 };
 
 export default complaintService;

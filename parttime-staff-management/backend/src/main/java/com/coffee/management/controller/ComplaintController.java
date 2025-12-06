@@ -1,5 +1,6 @@
 package com.coffee.management.controller;
 
+import com.coffee.management.dto.ApiResponse;
 import com.coffee.management.dto.complaint.*;
 import com.coffee.management.security.UserPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,10 +26,11 @@ public class ComplaintController {
      */
     @PostMapping
     @PreAuthorize("hasRole('STAFF')")
-    public ResponseEntity<ComplaintResponse> createComplaint(
+    public ResponseEntity<ApiResponse<ComplaintResponse>> createComplaint(
             @Valid @RequestBody CreateComplaintRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        return ResponseEntity.ok(complaintService.createComplaint(request, currentUser));
+        ComplaintResponse complaint = complaintService.createComplaint(request, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Gửi khiếu nại thành công", complaint));
     }
 
     /**
@@ -36,8 +38,9 @@ public class ComplaintController {
      */
     @GetMapping("/my-complaints")
     @PreAuthorize("hasRole('STAFF')")
-    public ResponseEntity<List<ComplaintResponse>> getMyComplaints(@AuthenticationPrincipal UserPrincipal currentUser) {
-        return ResponseEntity.ok(complaintService.getMyComplaints(currentUser.getId()));
+    public ResponseEntity<ApiResponse<List<ComplaintResponse>>> getMyComplaints(@AuthenticationPrincipal UserPrincipal currentUser) {
+        List<ComplaintResponse> complaints = complaintService.getMyComplaints(currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.success(complaints));
     }
 
     /**
@@ -45,10 +48,11 @@ public class ComplaintController {
      */
     @GetMapping("/store/{storeId}")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
-    public ResponseEntity<List<ComplaintResponse>> getComplaintsByStore(
+    public ResponseEntity<ApiResponse<List<ComplaintResponse>>> getComplaintsByStore(
             @PathVariable Long storeId,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        return ResponseEntity.ok(complaintService.getComplaintsByStore(storeId, currentUser));
+        List<ComplaintResponse> complaints = complaintService.getComplaintsByStore(storeId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(complaints));
     }
 
     /**
@@ -56,8 +60,9 @@ public class ComplaintController {
      */
     @GetMapping
     @PreAuthorize("hasRole('OWNER')")
-    public ResponseEntity<List<ComplaintResponse>> getAllComplaints() {
-        return ResponseEntity.ok(complaintService.getAllComplaints());
+    public ResponseEntity<ApiResponse<List<ComplaintResponse>>> getAllComplaints() {
+        List<ComplaintResponse> complaints = complaintService.getAllComplaints();
+        return ResponseEntity.ok(ApiResponse.success(complaints));
     }
 
     /**
@@ -65,8 +70,9 @@ public class ComplaintController {
      */
     @GetMapping("/pending/store/{storeId}")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
-    public ResponseEntity<List<ComplaintResponse>> getPendingComplaints(@PathVariable Long storeId) {
-        return ResponseEntity.ok(complaintService.getPendingComplaints(storeId));
+    public ResponseEntity<ApiResponse<List<ComplaintResponse>>> getPendingComplaints(@PathVariable Long storeId) {
+        List<ComplaintResponse> complaints = complaintService.getPendingComplaints(storeId);
+        return ResponseEntity.ok(ApiResponse.success(complaints));
     }
 
     /**
@@ -74,18 +80,20 @@ public class ComplaintController {
      */
     @GetMapping("/pending")
     @PreAuthorize("hasRole('OWNER')")
-    public ResponseEntity<List<ComplaintResponse>> getAllPendingComplaints() {
-        return ResponseEntity.ok(complaintService.getAllPendingComplaints());
+    public ResponseEntity<ApiResponse<List<ComplaintResponse>>> getAllPendingComplaints() {
+        List<ComplaintResponse> complaints = complaintService.getAllPendingComplaints();
+        return ResponseEntity.ok(ApiResponse.success(complaints));
     }
 
     /**
      * Get complaint by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ComplaintResponse> getComplaintById(
+    public ResponseEntity<ApiResponse<ComplaintResponse>> getComplaintById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        return ResponseEntity.ok(complaintService.getComplaintById(id, currentUser));
+        ComplaintResponse complaint = complaintService.getComplaintById(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(complaint));
     }
 
     /**
@@ -93,11 +101,12 @@ public class ComplaintController {
      */
     @PostMapping("/{id}/respond")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
-    public ResponseEntity<ComplaintResponse> respondToComplaint(
+    public ResponseEntity<ApiResponse<ComplaintResponse>> respondToComplaint(
             @PathVariable Long id,
             @Valid @RequestBody RespondComplaintRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        return ResponseEntity.ok(complaintService.respondToComplaint(id, request, currentUser));
+        ComplaintResponse complaint = complaintService.respondToComplaint(id, request, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Đã phản hồi khiếu nại", complaint));
     }
 
     /**
@@ -105,9 +114,9 @@ public class ComplaintController {
      */
     @GetMapping("/count/pending/store/{storeId}")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
-    public ResponseEntity<Map<String, Long>> getPendingCount(@PathVariable Long storeId) {
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getPendingCount(@PathVariable Long storeId) {
         long count = complaintService.countPendingComplaints(storeId);
-        return ResponseEntity.ok(Map.of("count", count));
+        return ResponseEntity.ok(ApiResponse.success(Map.of("count", count)));
     }
 }
 

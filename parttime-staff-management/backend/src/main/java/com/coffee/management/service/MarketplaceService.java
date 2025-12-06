@@ -79,10 +79,11 @@ public class MarketplaceService {
     }
 
     /**
-     * Get listings pending manager approval
+     * Get listings pending manager approval (both PENDING and CLAIMED)
      */
     public List<MarketplaceListingResponse> getPendingApproval(Long storeId) {
-        return marketplaceRepository.findPendingApprovalByStore(storeId)
+        // Get both PENDING (new listings) and CLAIMED (waiting for approval) listings
+        return marketplaceRepository.findActiveListingsByStore(storeId, LocalDateTime.now())
                 .stream()
                 .map(MarketplaceListingResponse::fromEntity)
                 .collect(Collectors.toList());

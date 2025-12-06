@@ -88,7 +88,11 @@ const Marketplace: React.FC = () => {
       setShowGiveModal(false);
       setGiveReason('');
       setSelectedShiftId(null);
+      // Refresh cả my listings và available listings
       dispatch(fetchMyListings());
+      if (selectedStoreId) {
+        dispatch(fetchAvailableListings(selectedStoreId));
+      }
     } catch (err: any) {
       setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });
     }
@@ -190,7 +194,20 @@ const Marketplace: React.FC = () => {
   const safePendingManagerSwaps = Array.isArray(pendingManagerSwaps) ? pendingManagerSwaps : [];
   const safeMyShifts = Array.isArray(myShifts) ? myShifts : [];
 
-  if (loading && safeListings.length === 0) {
+  // Debug: Log listings to console (remove in production)
+  useEffect(() => {
+    if (selectedStoreId) {
+      console.log('Marketplace Debug:', {
+        selectedStoreId,
+        listings: safeListings,
+        listingsCount: safeListings.length,
+        pendingListings: safeListings.filter(l => l.status === 'PENDING'),
+        loading
+      });
+    }
+  }, [selectedStoreId, safeListings, loading]);
+
+  if (loading && safeListings.length === 0 && !selectedStoreId) {
     return <Loading />;
   }
 
@@ -461,12 +478,52 @@ const Marketplace: React.FC = () => {
 
       {activeTab === 'pending' && (isManager || isOwner) && (
         <div>
-          {/* Pending Listings */}
-          {safePendingApproval.length > 0 && (
+          {/* Pending Listings - Chưa có người nhận (PENDING) */}
+          {safePendingApproval.filter(l => l.status === 'PENDING').length > 0 && (
+            <>
+              <h5 className="mb-3">Ca mới đăng (chưa có người nhận)</h5>
+              <div className="row g-3 mb-4">
+                {safePendingApproval.filter(l => l.status === 'PENDING').map((listing) => (
+                  <div key={listing.id} className="col-md-6 col-lg-4">
+                    <div className="card card-coffee border-info">
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <h5 className="card-title mb-0">{listing.shiftTitle}</h5>
+                          <span className="badge bg-info">Mới đăng</span>
+                        </div>
+                        <p className="text-muted small mb-2">
+                          <i className="bi bi-calendar me-1"></i>
+                          {formatDateTime(listing.shiftStart)}
+                        </p>
+                        <p className="text-muted small mb-2">
+                          <i className="bi bi-clock me-1"></i>
+                          {formatTime(listing.shiftStart)} - {formatTime(listing.shiftEnd)}
+                        </p>
+                        <p className="small mb-2">
+                          <i className="bi bi-person me-1"></i>
+                          <strong>{listing.fromUserName}</strong> đang nhường
+                        </p>
+                        {listing.reason && (
+                          <p className="small text-muted mb-3">Lý do: {listing.reason}</p>
+                        )}
+                        <p className="small text-muted mb-0">
+                          <i className="bi bi-info-circle me-1"></i>
+                          Đang chờ nhân viên khác nhận ca
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Claimed Listings - Đã có người nhận, chờ Manager duyệt (CLAIMED) */}
+          {safePendingApproval.filter(l => l.status === 'CLAIMED').length > 0 && (
             <>
               <h5 className="mb-3">Yêu cầu nhường ca chờ duyệt</h5>
               <div className="row g-3 mb-4">
-                {safePendingApproval.map((listing) => (
+                {safePendingApproval.filter(l => l.status === 'CLAIMED').map((listing) => (
                   <div key={listing.id} className="col-md-6 col-lg-4">
                     <div className="card card-coffee">
                       <div className="card-body">
@@ -478,7 +535,7 @@ const Marketplace: React.FC = () => {
                         <div className="mb-2">
                           <span className="badge bg-secondary me-1">{listing.fromUserName}</span>
                           <i className="bi bi-arrow-right"></i>
-                          <span className="badge bg-primary ms-1">{listing.toUserName}</span>
+                          <span className="badge bg-primary ms-1">{listing.toUserName || 'Chưa có'}</span>
                         </div>
                         {listing.reason && (
                           <p className="small text-muted">Lý do: {listing.reason}</p>

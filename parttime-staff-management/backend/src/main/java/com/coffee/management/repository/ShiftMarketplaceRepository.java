@@ -60,6 +60,17 @@ public interface ShiftMarketplaceRepository extends JpaRepository<ShiftMarketpla
     List<ShiftMarketplace> findPendingApprovalByStore(@Param("storeId") Long storeId);
 
     /**
+     * Find all active listings (PENDING and CLAIMED) for manager to review
+     */
+    @Query("SELECT m FROM ShiftMarketplace m " +
+           "JOIN m.shift s " +
+           "WHERE s.store.id = :storeId " +
+           "AND m.status IN ('PENDING', 'CLAIMED') " +
+           "AND s.startDatetime > :now " +
+           "ORDER BY m.status ASC, m.createdAt ASC")
+    List<ShiftMarketplace> findActiveListingsByStore(@Param("storeId") Long storeId, @Param("now") LocalDateTime now);
+
+    /**
      * Count active listings by store
      */
     @Query("SELECT COUNT(m) FROM ShiftMarketplace m " +

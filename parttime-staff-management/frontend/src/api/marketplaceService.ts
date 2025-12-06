@@ -1,4 +1,5 @@
 import api from './axios';
+import { ApiResponse } from './authService';
 
 export type MarketplaceType = 'GIVE_AWAY' | 'SWAP' | 'OPEN';
 export type MarketplaceStatus = 'PENDING' | 'CLAIMED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
@@ -72,48 +73,76 @@ export interface CreateSwapRequest {
 
 const marketplaceService = {
   // Listings
-  getAvailableListings: (storeId: number) => 
-    api.get<MarketplaceListing[]>(`/marketplace/store/${storeId}`),
+  getAvailableListings: async (storeId: number): Promise<ApiResponse<MarketplaceListing[]>> => {
+    const response = await api.get<ApiResponse<MarketplaceListing[]>>(`/marketplace/store/${storeId}`);
+    return response.data;
+  },
 
-  getAllListingsByStore: (storeId: number) => 
-    api.get<MarketplaceListing[]>(`/marketplace/store/${storeId}/all`),
+  getAllListingsByStore: async (storeId: number): Promise<ApiResponse<MarketplaceListing[]>> => {
+    const response = await api.get<ApiResponse<MarketplaceListing[]>>(`/marketplace/store/${storeId}/all`);
+    return response.data;
+  },
 
-  getMyListings: () => 
-    api.get<MarketplaceListing[]>('/marketplace/my-listings'),
+  getMyListings: async (): Promise<ApiResponse<MarketplaceListing[]>> => {
+    const response = await api.get<ApiResponse<MarketplaceListing[]>>('/marketplace/my-listings');
+    return response.data;
+  },
 
-  getPendingApproval: (storeId: number) => 
-    api.get<MarketplaceListing[]>(`/marketplace/pending-approval/${storeId}`),
+  getPendingApproval: async (storeId: number): Promise<ApiResponse<MarketplaceListing[]>> => {
+    const response = await api.get<ApiResponse<MarketplaceListing[]>>(`/marketplace/pending-approval/${storeId}`);
+    return response.data;
+  },
 
-  createListing: (data: CreateListingRequest) => 
-    api.post<MarketplaceListing>('/marketplace/give', data),
+  createListing: async (data: CreateListingRequest): Promise<ApiResponse<MarketplaceListing>> => {
+    const response = await api.post<ApiResponse<MarketplaceListing>>('/marketplace/give', data);
+    return response.data;
+  },
 
-  claimListing: (listingId: number) => 
-    api.post<MarketplaceListing>(`/marketplace/claim/${listingId}`),
+  claimListing: async (listingId: number): Promise<ApiResponse<MarketplaceListing>> => {
+    const response = await api.post<ApiResponse<MarketplaceListing>>(`/marketplace/claim/${listingId}`);
+    return response.data;
+  },
 
-  reviewListing: (listingId: number, data: ReviewListingRequest) => 
-    api.post<MarketplaceListing>(`/marketplace/review/${listingId}`, data),
+  reviewListing: async (listingId: number, data: ReviewListingRequest): Promise<ApiResponse<MarketplaceListing>> => {
+    const response = await api.post<ApiResponse<MarketplaceListing>>(`/marketplace/review/${listingId}`, data);
+    return response.data;
+  },
 
-  cancelListing: (listingId: number) => 
-    api.post<MarketplaceListing>(`/marketplace/cancel/${listingId}`),
+  cancelListing: async (listingId: number): Promise<ApiResponse<MarketplaceListing>> => {
+    const response = await api.post<ApiResponse<MarketplaceListing>>(`/marketplace/cancel/${listingId}`);
+    return response.data;
+  },
 
   // Swap Requests
-  getMySwapRequests: () => 
-    api.get<SwapRequest[]>('/marketplace/my-swaps'),
+  getMySwapRequests: async (): Promise<ApiResponse<SwapRequest[]>> => {
+    const response = await api.get<ApiResponse<SwapRequest[]>>('/marketplace/my-swaps');
+    return response.data;
+  },
 
-  getPendingPeerConfirmation: () => 
-    api.get<SwapRequest[]>('/marketplace/pending-peer'),
+  getPendingPeerConfirmation: async (): Promise<ApiResponse<SwapRequest[]>> => {
+    const response = await api.get<ApiResponse<SwapRequest[]>>('/marketplace/pending-peer');
+    return response.data;
+  },
 
-  getSwapsPendingApproval: (storeId: number) => 
-    api.get<SwapRequest[]>(`/marketplace/swaps/pending-approval/${storeId}`),
+  getSwapsPendingApproval: async (storeId: number): Promise<ApiResponse<SwapRequest[]>> => {
+    const response = await api.get<ApiResponse<SwapRequest[]>>(`/marketplace/swaps/pending-approval/${storeId}`);
+    return response.data;
+  },
 
-  createSwapRequest: (data: CreateSwapRequest) => 
-    api.post<SwapRequest>('/marketplace/swap', data),
+  createSwapRequest: async (data: CreateSwapRequest): Promise<ApiResponse<SwapRequest>> => {
+    const response = await api.post<ApiResponse<SwapRequest>>('/marketplace/swap', data);
+    return response.data;
+  },
 
-  confirmSwapRequest: (swapId: number, confirm: boolean) => 
-    api.post<SwapRequest>(`/marketplace/swap/${swapId}/confirm?confirm=${confirm}`),
+  confirmSwapRequest: async (swapId: number, confirm: boolean): Promise<ApiResponse<SwapRequest>> => {
+    const response = await api.post<ApiResponse<SwapRequest>>(`/marketplace/swap/${swapId}/confirm?confirm=${confirm}`);
+    return response.data;
+  },
 
-  reviewSwapRequest: (swapId: number, approve: boolean, note?: string) => 
-    api.post<SwapRequest>(`/marketplace/swap/${swapId}/review?approve=${approve}${note ? '&note=' + encodeURIComponent(note) : ''}`),
+  reviewSwapRequest: async (swapId: number, approve: boolean, note?: string): Promise<ApiResponse<SwapRequest>> => {
+    const response = await api.post<ApiResponse<SwapRequest>>(`/marketplace/swap/${swapId}/review?approve=${approve}${note ? '&note=' + encodeURIComponent(note) : ''}`);
+    return response.data;
+  },
 };
 
 export default marketplaceService;

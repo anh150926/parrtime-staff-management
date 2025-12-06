@@ -26,6 +26,7 @@ const Complaints: React.FC = () => {
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'my'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRespondModal, setShowRespondModal] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   
@@ -98,6 +99,7 @@ const Complaints: React.FC = () => {
       await dispatch(respondToComplaint({ id: selectedComplaint.id, data: responseData })).unwrap();
       setToast({ show: true, message: 'Đã phản hồi khiếu nại!', type: 'success' });
       setShowRespondModal(false);
+      setShowDetailModal(false);
       setSelectedComplaint(null);
       setResponseData({ status: 'RESOLVED', response: '' });
       if (selectedStoreId) {
@@ -233,7 +235,14 @@ const Complaints: React.FC = () => {
       <div className="row g-3">
         {displayComplaints.map((complaint) => (
           <div key={complaint.id} className="col-md-6 col-lg-4">
-            <div className="card card-coffee h-100">
+            <div 
+              className="card card-coffee h-100" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                setSelectedComplaint(complaint);
+                setShowDetailModal(true);
+              }}
+            >
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-start mb-2">
                   <h5 className="card-title mb-0">{complaint.subject}</h5>
@@ -278,21 +287,22 @@ const Complaints: React.FC = () => {
                 {complaint.response && (
                   <div className="alert alert-info py-2 mb-2">
                     <small>
-                      <strong>Phản hồi:</strong> {complaint.response}
+                      <strong>Phản hồi:</strong> {complaint.response.substring(0, 50)}...
                     </small>
                   </div>
                 )}
 
-                {!isStaff && complaint.status === 'PENDING' && (
+                {!isStaff && (complaint.status === 'PENDING' || complaint.status === 'IN_PROGRESS') && (
                   <button
                     className="btn btn-coffee btn-sm w-100"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setSelectedComplaint(complaint);
                       setShowRespondModal(true);
                     }}
                   >
                     <i className="bi bi-reply me-1"></i>
-                    Phản hồi
+                    {complaint.status === 'PENDING' ? 'Phản hồi' : 'Cập nhật'}
                   </button>
                 )}
               </div>
@@ -382,6 +392,136 @@ const Complaints: React.FC = () => {
         </>
       )}
 
+      {/* Detail Modal */}
+      {showDetailModal && selectedComplaint && (
+        <>
+          <div className="modal show d-block" tabIndex={-1}>
+            <div className="modal-dialog modal-lg">
+              <div className="modal-content modal-coffee">
+                <div className="modal-header">
+                  <h5 className="modal-title">Chi tiết khiếu nại</h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      setSelectedComplaint(null);
+                    }}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h6 className="mb-0">{selectedComplaint.subject}</h6>
+                      <span className={`badge ${getStatusBadge(selectedComplaint.status).class}`}>
+                        {getStatusBadge(selectedComplaint.status).label}
+                      </span>
+                    </div>
+                    <div className="mb-2">
+                      <span className={`badge ${getTypeBadge(selectedComplaint.type).class}`}>
+                        {getTypeBadge(selectedComplaint.type).label}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <p className="small mb-1">
+                        <i className="bi bi-person me-1"></i>
+                        <strong>Người gửi:</strong> {selectedComplaint.fromUserName}
+                      </p>
+                      {!isStaff && (
+                        <p className="small mb-1">
+                          <i className="bi bi-shop me-1"></i>
+                          <strong>Cơ sở:</strong> {selectedComplaint.storeName}
+                        </p>
+                      )}
+                      <p className="small mb-1">
+                        <i className="bi bi-calendar me-1"></i>
+                        <strong>Ngày gửi:</strong> {formatDateTime(selectedComplaint.createdAt)}
+                      </p>
+                    </div>
+                    <div className="col-md-6">
+                      {selectedComplaint.respondedById && (
+                        <p className="small mb-1">
+                          <i className="bi bi-person-check me-1"></i>
+                          <strong>Người phản hồi:</strong> {selectedComplaint.respondedByName}
+                        </p>
+                      )}
+                      {selectedComplaint.respondedAt && (
+                        <p className="small mb-1">
+                          <i className="bi bi-clock me-1"></i>
+                          <strong>Ngày phản hồi:</strong> {formatDateTime(selectedComplaint.respondedAt)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <h6>Nội dung khiếu nại:</h6>
+                    <div className="card bg-light p-3">
+                      <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                        {selectedComplaint.content}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedComplaint.response && (
+                    <div className="mb-3">
+                      <h6>Phản hồi:</h6>
+                      <div className="alert alert-info">
+                        <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                          {selectedComplaint.response}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status Explanation */}
+                  <div className="alert alert-light">
+                    <small>
+                      <strong>Giải thích trạng thái:</strong>
+                      <ul className="mb-0 mt-2">
+                        <li><strong>Chờ xử lý:</strong> Khiếu nại mới được gửi, chưa có phản hồi</li>
+                        <li><strong>Đang xử lý:</strong> Manager đã xem và đang xử lý khiếu nại</li>
+                        <li><strong>Đã giải quyết:</strong> Khiếu nại đã được giải quyết thành công</li>
+                        <li><strong>Từ chối:</strong> Khiếu nại không hợp lệ hoặc không được chấp nhận</li>
+                        <li><strong>Đã đóng:</strong> Khiếu nại đã được đóng, không còn xử lý</li>
+                      </ul>
+                    </small>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  {!isStaff && (selectedComplaint.status === 'PENDING' || selectedComplaint.status === 'IN_PROGRESS') && (
+                    <button
+                      className="btn btn-coffee"
+                      onClick={() => {
+                        setShowDetailModal(false);
+                        setShowRespondModal(true);
+                      }}
+                    >
+                      <i className="bi bi-reply me-1"></i>
+                      {selectedComplaint.status === 'PENDING' ? 'Phản hồi' : 'Cập nhật phản hồi'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      setSelectedComplaint(null);
+                    }}
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop show"></div>
+        </>
+      )}
+
       {/* Respond Modal */}
       {showRespondModal && selectedComplaint && (
         <>
@@ -410,11 +550,31 @@ const Complaints: React.FC = () => {
                         value={responseData.status}
                         onChange={(e) => setResponseData({ ...responseData, status: e.target.value as ComplaintStatus })}
                       >
-                        <option value="IN_PROGRESS">Đang xử lý</option>
-                        <option value="RESOLVED">Đã giải quyết</option>
-                        <option value="REJECTED">Từ chối</option>
-                        <option value="CLOSED">Đóng</option>
+                        {selectedComplaint.status === 'PENDING' && (
+                          <option value="IN_PROGRESS">Đang xử lý - Đã xem và đang xử lý khiếu nại</option>
+                        )}
+                        {selectedComplaint.status === 'IN_PROGRESS' && (
+                          <>
+                            <option value="IN_PROGRESS">Đang xử lý - Tiếp tục xử lý</option>
+                            <option value="RESOLVED">Đã giải quyết - Khiếu nại đã được giải quyết thành công</option>
+                            <option value="REJECTED">Từ chối - Khiếu nại không hợp lệ hoặc không được chấp nhận</option>
+                            <option value="CLOSED">Đóng - Đóng khiếu nại</option>
+                          </>
+                        )}
+                        {selectedComplaint.status !== 'PENDING' && selectedComplaint.status !== 'IN_PROGRESS' && (
+                          <>
+                            <option value="RESOLVED">Đã giải quyết</option>
+                            <option value="REJECTED">Từ chối</option>
+                            <option value="CLOSED">Đóng</option>
+                          </>
+                        )}
                       </select>
+                      <small className="text-muted">
+                        {responseData.status === 'IN_PROGRESS' && 'Manager đã xem và đang xử lý khiếu nại này'}
+                        {responseData.status === 'RESOLVED' && 'Khiếu nại đã được giải quyết thành công'}
+                        {responseData.status === 'REJECTED' && 'Khiếu nại không hợp lệ hoặc không được chấp nhận'}
+                        {responseData.status === 'CLOSED' && 'Đóng khiếu nại, không còn xử lý'}
+                      </small>
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Phản hồi *</label>
