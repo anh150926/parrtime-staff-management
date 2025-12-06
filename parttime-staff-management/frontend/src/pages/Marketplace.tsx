@@ -53,6 +53,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ hideHeader = false }) => {
   const isStaff = user?.role === 'STAFF';
   const isManager = user?.role === 'MANAGER';
   const isOwner = user?.role === 'OWNER';
+  
+  // Owner chỉ được xem, không được tác động vào chợ ca
+  const canReview = isManager; // Chỉ Manager có thể duyệt, Owner không được
 
   useEffect(() => {
     dispatch(fetchStores());
@@ -492,6 +495,14 @@ const Marketplace: React.FC<MarketplaceProps> = ({ hideHeader = false }) => {
 
       {activeTab === 'pending' && (isManager || isOwner) && (
         <div>
+          {/* Alert for Owner - View only mode */}
+          {isOwner && (
+            <div className="alert alert-warning mb-4">
+              <i className="bi bi-eye me-2"></i>
+              <strong>Chế độ xem:</strong> Với vai trò Chủ sở hữu, bạn chỉ có thể xem các yêu cầu. Các thao tác duyệt/từ chối do Quản lý thực hiện.
+            </div>
+          )}
+
           {/* Pending Listings - Chưa có người nhận (PENDING) */}
           {safePendingApproval.filter(l => l.status === 'PENDING').length > 0 && (
             <>
@@ -554,28 +565,38 @@ const Marketplace: React.FC<MarketplaceProps> = ({ hideHeader = false }) => {
                         {listing.reason && (
                           <p className="small text-muted">Lý do: {listing.reason}</p>
                         )}
-                        <div className="d-flex gap-2 mt-3">
-                          <button 
-                            className="btn btn-success btn-sm flex-fill"
-                            onClick={() => {
-                              setSelectedListing(listing);
-                              setShowReviewModal(true);
-                            }}
-                          >
-                            <i className="bi bi-check me-1"></i>
-                            Duyệt
-                          </button>
-                          <button 
-                            className="btn btn-outline-danger btn-sm flex-fill"
-                            onClick={() => {
-                              setSelectedListing(listing);
-                              handleReviewListing(false);
-                            }}
-                          >
-                            <i className="bi bi-x me-1"></i>
-                            Từ chối
-                          </button>
-                        </div>
+                        {canReview && (
+                          <div className="d-flex gap-2 mt-3">
+                            <button 
+                              className="btn btn-success btn-sm flex-fill"
+                              onClick={() => {
+                                setSelectedListing(listing);
+                                setShowReviewModal(true);
+                              }}
+                            >
+                              <i className="bi bi-check me-1"></i>
+                              Duyệt
+                            </button>
+                            <button 
+                              className="btn btn-outline-danger btn-sm flex-fill"
+                              onClick={() => {
+                                setSelectedListing(listing);
+                                handleReviewListing(false);
+                              }}
+                            >
+                              <i className="bi bi-x me-1"></i>
+                              Từ chối
+                            </button>
+                          </div>
+                        )}
+                        {isOwner && (
+                          <div className="mt-3 text-center">
+                            <span className="badge bg-secondary">
+                              <i className="bi bi-eye me-1"></i>
+                              Chỉ xem
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -608,22 +629,32 @@ const Marketplace: React.FC<MarketplaceProps> = ({ hideHeader = false }) => {
                             <p className="small text-muted">{formatDateTime(swap.toShiftStart)}</p>
                           </div>
                         </div>
-                        <div className="d-flex gap-2 mt-3">
-                          <button 
-                            className="btn btn-success btn-sm flex-fill"
-                            onClick={() => handleReviewSwap(swap.id, true)}
-                          >
-                            <i className="bi bi-check me-1"></i>
-                            Duyệt
-                          </button>
-                          <button 
-                            className="btn btn-outline-danger btn-sm flex-fill"
-                            onClick={() => handleReviewSwap(swap.id, false)}
-                          >
-                            <i className="bi bi-x me-1"></i>
-                            Từ chối
-                          </button>
-                        </div>
+                        {canReview && (
+                          <div className="d-flex gap-2 mt-3">
+                            <button 
+                              className="btn btn-success btn-sm flex-fill"
+                              onClick={() => handleReviewSwap(swap.id, true)}
+                            >
+                              <i className="bi bi-check me-1"></i>
+                              Duyệt
+                            </button>
+                            <button 
+                              className="btn btn-outline-danger btn-sm flex-fill"
+                              onClick={() => handleReviewSwap(swap.id, false)}
+                            >
+                              <i className="bi bi-x me-1"></i>
+                              Từ chối
+                            </button>
+                          </div>
+                        )}
+                        {isOwner && (
+                          <div className="mt-3 text-center">
+                            <span className="badge bg-secondary">
+                              <i className="bi bi-eye me-1"></i>
+                              Chỉ xem
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

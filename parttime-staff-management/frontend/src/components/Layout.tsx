@@ -15,6 +15,7 @@ const Layout: React.FC = () => {
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [workScheduleExpanded, setWorkScheduleExpanded] = useState(true);
+  const [tasksExpanded, setTasksExpanded] = useState(true);
 
   // Auto-expand menu if on work schedule related routes
   useEffect(() => {
@@ -25,6 +26,16 @@ const Layout: React.FC = () => {
       location.pathname === "/marketplace"
     ) {
       setWorkScheduleExpanded(true);
+    }
+  }, [location.pathname]);
+
+  // Auto-expand menu if on tasks related routes
+  useEffect(() => {
+    if (
+      location.pathname === "/tasks" ||
+      location.pathname === "/create-task-for-staff"
+    ) {
+      setTasksExpanded(true);
     }
   }, [location.pathname]);
 
@@ -101,13 +112,6 @@ const Layout: React.FC = () => {
                 style={{ width: "300px" }}
               >
                 <h6 className="dropdown-header">Thông báo</h6>
-                <div className="dropdown-divider"></div>
-                <NavLink
-                  to="/notifications"
-                  className="dropdown-item text-center"
-                >
-                  Xem tất cả thông báo
-                </NavLink>
               </div>
             </div>
 
@@ -266,27 +270,41 @@ const Layout: React.FC = () => {
             </NavLink>
           )}
 
-          {/* Tasks */}
-          <NavLink
-            to="/tasks"
-            className="nav-link"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <i className="bi bi-list-check"></i>
-            Nhiệm vụ
-          </NavLink>
-
-          {/* Create Task For Staff - Manager and Owner only */}
-          {(user?.role === "OWNER" || user?.role === "MANAGER") && (
-            <NavLink
-              to="/create-task-for-staff"
-              className="nav-link"
-              onClick={() => setSidebarOpen(false)}
+          {/* Tasks - Collapsible menu */}
+          <div className="nav-menu-item">
+            <button
+              className={`nav-link nav-link-parent ${tasksExpanded ? "expanded" : ""}`}
+              onClick={() => setTasksExpanded(!tasksExpanded)}
             >
-              <i className="bi bi-clipboard-check"></i>
-              Giao nhiệm vụ
-            </NavLink>
-          )}
+              <i className="bi bi-list-check"></i>
+              Nhiệm vụ
+              <i className={`bi ms-auto ${tasksExpanded ? "bi-chevron-up" : "bi-chevron-down"}`}></i>
+            </button>
+            {tasksExpanded && (
+              <div className="nav-submenu">
+                {/* Giao nhiệm vụ - Manager and Owner only */}
+                {(user?.role === "OWNER" || user?.role === "MANAGER") && (
+                  <NavLink
+                    to="/create-task-for-staff"
+                    className="nav-link nav-link-sub"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <i className="bi bi-clipboard-check me-2"></i>
+                    Giao nhiệm vụ
+                  </NavLink>
+                )}
+                {/* Bảng nhiệm vụ - All users */}
+                <NavLink
+                  to="/tasks"
+                  className="nav-link nav-link-sub"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <i className="bi bi-table me-2"></i>
+                  Bảng nhiệm vụ
+                </NavLink>
+              </div>
+            )}
+          </div>
 
           <NavLink
             to="/requests"
@@ -355,18 +373,18 @@ const Layout: React.FC = () => {
             Khiếu nại
           </NavLink>
 
-          {/* Notifications for all */}
-          <NavLink
-            to="/notifications"
-            className="nav-link"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <i className="bi bi-bell"></i>
-            Thông báo
-            {unreadCount > 0 && (
-              <span className="badge bg-danger ms-auto">{unreadCount}</span>
-            )}
-          </NavLink>
+          {/* Send Notification for Owner */}
+          {user?.role === "OWNER" && (
+            <NavLink
+              to="/send-notification"
+              className="nav-link"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <i className="bi bi-send"></i>
+              Gửi thông báo
+            </NavLink>
+          )}
+
         </nav>
       </div>
 

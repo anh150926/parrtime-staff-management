@@ -18,6 +18,7 @@ import Marketplace from "./pages/Marketplace";
 import Tasks from "./pages/Tasks";
 import CreateTaskForStaff from "./pages/CreateTaskForStaff";
 import Notifications from "./pages/Notifications";
+import SendNotification from "./pages/SendNotification";
 import Complaints from "./pages/Complaints";
 import EmployeeRanking from "./pages/EmployeeRanking";
 import ShiftRegistration from "./pages/ShiftRegistration";
@@ -54,6 +55,7 @@ const App: React.FC = () => {
           <Route path="/my-payroll" element={<MyPayroll />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/send-notification" element={<SendNotification />} />
           <Route path="/complaints" element={<Complaints />} />
           <Route path="/rankings" element={<EmployeeRanking />} />
           <Route path="/profile" element={<Profile />} />
