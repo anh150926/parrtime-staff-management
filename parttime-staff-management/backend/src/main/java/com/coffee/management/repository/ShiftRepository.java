@@ -39,6 +39,12 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
            "LEFT JOIN FETCH a.user " +
            "WHERE s.id = :id")
     Optional<Shift> findByIdWithRelations(@Param("id") Long id);
+    
+    @Query("SELECT s FROM Shift s " +
+           "LEFT JOIN FETCH s.store " +
+           "LEFT JOIN FETCH s.createdBy " +
+           "WHERE s.store.id = :storeId AND s.isTemplate = true")
+    List<Shift> findByStoreIdAndIsTemplateTrue(@Param("storeId") Long storeId);
 }
 
 

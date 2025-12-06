@@ -41,6 +41,17 @@ public class Shift {
     @Builder.Default
     private Integer requiredSlots = 1;
 
+    @Column(name = "is_template")
+    @Builder.Default
+    private Boolean isTemplate = false;
+
+    @Column(name = "shift_type", length = 20)
+    @Enumerated(EnumType.STRING)
+    private ShiftType shiftType;
+
+    @Column(name = "day_of_week")
+    private Integer dayOfWeek; // 1=Monday, 7=Sunday
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

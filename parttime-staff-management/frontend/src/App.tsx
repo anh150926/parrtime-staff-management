@@ -20,6 +20,8 @@ import CreateTaskForStaff from "./pages/CreateTaskForStaff";
 import Notifications from "./pages/Notifications";
 import Complaints from "./pages/Complaints";
 import EmployeeRanking from "./pages/EmployeeRanking";
+import ShiftRegistration from "./pages/ShiftRegistration";
+import WorkSchedule from "./pages/WorkSchedule";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 const App: React.FC = () => {
@@ -35,6 +37,8 @@ const App: React.FC = () => {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/shift-registration" element={<ShiftRegistration />} />
+          <Route path="/work-schedule" element={<WorkSchedule />} />
           <Route path="/users" element={<Users />} />
           <Route path="/stores" element={<Stores />} />
           <Route path="/shifts" element={<Shifts />} />

@@ -6,6 +6,9 @@ import com.coffee.management.exception.BadRequestException;
 import com.coffee.management.exception.ForbiddenException;
 import com.coffee.management.exception.ResourceNotFoundException;
 import com.coffee.management.repository.*;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import com.coffee.management.security.UserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,9 @@ public class ShiftService {
 
     @Autowired
     private AuditService auditService;
+
+    @Autowired
+    private ShiftRegistrationRepository registrationRepository;
 
     /**
      * Get shifts by store
@@ -81,6 +87,39 @@ public class ShiftService {
         // Validate datetime
         if (request.getEndDatetime().isBefore(request.getStartDatetime())) {
             throw new BadRequestException("End time must be after start time");
+        }
+
+        // Check if this shift is based on a template and if anyone has registered
+        LocalDate shiftDate = request.getStartDatetime().toLocalDate();
+        java.time.DayOfWeek dayOfWeek = shiftDate.getDayOfWeek();
+        int dayOfWeekValue = dayOfWeek.getValue(); // 1=Monday, 7=Sunday
+        
+        // Try to find matching template
+        List<Shift> templates = shiftRepository.findByStoreIdAndIsTemplateTrue(storeId);
+        Shift matchingTemplate = null;
+        for (Shift template : templates) {
+            if (template.getDayOfWeek() != null && template.getDayOfWeek().equals(dayOfWeekValue)) {
+                // Check shift type by comparing time ranges
+                LocalTime shiftStart = request.getStartDatetime().toLocalTime();
+                LocalTime templateStart = template.getStartDatetime().toLocalTime();
+                if (template.getShiftType() != null && 
+                    Math.abs(shiftStart.toSecondOfDay() - templateStart.toSecondOfDay()) < 3600) { // Within 1 hour
+                    matchingTemplate = template;
+                    break;
+                }
+            }
+        }
+        
+        // If template found, check if anyone has registered
+        if (matchingTemplate != null) {
+            List<com.coffee.management.entity.ShiftRegistration> registrations = registrationRepository
+                    .findActiveRegistrationsByShiftAndDate(matchingTemplate.getId(), shiftDate);
+            
+            if (registrations.isEmpty()) {
+                throw new BadRequestException(
+                    "Chưa có nhân viên nào đăng ký ca làm này. Vui lòng đợi nhân viên đăng ký trước khi tạo ca."
+                );
+            }
         }
 
         User creator = userRepository.findById(currentUser.getId())
@@ -209,6 +248,39 @@ public class ShiftService {
             );
         }
 
+        // Check if shift is based on a template and if anyone has registered
+        LocalDate shiftDate = shift.getStartDatetime().toLocalDate();
+        java.time.DayOfWeek dayOfWeek = shiftDate.getDayOfWeek();
+        int dayOfWeekValue = dayOfWeek.getValue(); // 1=Monday, 7=Sunday
+        
+        // Try to find matching template
+        List<Shift> templates = shiftRepository.findByStoreIdAndIsTemplateTrue(shift.getStore().getId());
+        Shift matchingTemplate = null;
+        for (Shift template : templates) {
+            if (template.getDayOfWeek() != null && template.getDayOfWeek().equals(dayOfWeekValue)) {
+                // Check shift type by comparing time ranges
+                LocalTime shiftStart = shift.getStartDatetime().toLocalTime();
+                LocalTime templateStart = template.getStartDatetime().toLocalTime();
+                if (template.getShiftType() != null && 
+                    Math.abs(shiftStart.toSecondOfDay() - templateStart.toSecondOfDay()) < 3600) { // Within 1 hour
+                    matchingTemplate = template;
+                    break;
+                }
+            }
+        }
+        
+        // If template found, check if anyone has registered
+        if (matchingTemplate != null) {
+            List<com.coffee.management.entity.ShiftRegistration> registrations = registrationRepository
+                    .findActiveRegistrationsByShiftAndDate(matchingTemplate.getId(), shiftDate);
+            
+            if (registrations.isEmpty()) {
+                throw new BadRequestException(
+                    String.format("Chưa có nhân viên nào đăng ký ca làm này. Vui lòng đợi nhân viên đăng ký trước khi phân công.")
+                );
+            }
+        }
+
         for (Long userId : request.getUserIds()) {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
@@ -218,12 +290,27 @@ public class ShiftService {
                 throw new BadRequestException("User " + user.getFullName() + " does not belong to this store");
             }
 
+            // If template found, check if this specific user has registered
+            if (matchingTemplate != null) {
+                boolean hasRegistered = registrationRepository
+                        .findByShiftIdAndUserIdAndRegistrationDate(matchingTemplate.getId(), userId, shiftDate)
+                        .map(reg -> reg.getStatus() == com.coffee.management.entity.RegistrationStatus.REGISTERED)
+                        .orElse(false);
+                
+                if (!hasRegistered) {
+                    throw new BadRequestException(
+                        String.format("Nhân viên %s chưa đăng ký ca làm này. Chỉ có thể phân công cho nhân viên đã đăng ký.", 
+                            user.getFullName())
+                    );
+                }
+            }
+
             // Check if already assigned
             if (!assignmentRepository.existsByShiftIdAndUserId(shiftId, userId)) {
                 ShiftAssignment assignment = ShiftAssignment.builder()
                         .shift(shift)
                         .user(user)
-                        .status(AssignmentStatus.ASSIGNED)
+                        .status(AssignmentStatus.CONFIRMED) // Bắt buộc làm khi quản lý phân công
                         .build();
                 assignmentRepository.save(assignment);
 

@@ -7,7 +7,11 @@ import Loading from '../components/Loading';
 import Toast from '../components/Toast';
 import { formatDateTime, formatTime } from '../utils/formatters';
 
-const MyShifts: React.FC = () => {
+interface MyShiftsProps {
+  hideHeader?: boolean;
+}
+
+const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { myShifts, loading } = useSelector((state: RootState) => state.shifts);
@@ -178,15 +182,17 @@ const MyShifts: React.FC = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="mb-1">
-            <i className="bi bi-calendar-check me-2"></i>
-            Ca làm của tôi
-          </h2>
-          <p className="text-muted mb-0">Xem và quản lý ca làm việc</p>
+      {!hideHeader && (
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="mb-1">
+              <i className="bi bi-calendar-check me-2"></i>
+              Lịch làm việc
+            </h2>
+            <p className="text-muted mb-0">Xem và quản lý ca làm việc</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Hiển thị ca đang check-in (nếu có) */}
       {currentCheckIn && activeShift && (

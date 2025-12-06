@@ -21,7 +21,11 @@ import Toast from '../components/Toast';
 import { formatDateTime, formatTime } from '../utils/formatters';
 import { MarketplaceListing, SwapRequest } from '../api/marketplaceService';
 
-const Marketplace: React.FC = () => {
+interface MarketplaceProps {
+  hideHeader?: boolean;
+}
+
+const Marketplace: React.FC<MarketplaceProps> = ({ hideHeader = false }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { stores } = useSelector((state: RootState) => state.stores);
@@ -217,21 +221,31 @@ const Marketplace: React.FC = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="mb-1">
-            <i className="bi bi-shop-window me-2"></i>
-            Chợ Ca
-          </h2>
-          <p className="text-muted mb-0">Nhường, nhận và đổi ca làm việc</p>
+      {!hideHeader && (
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="mb-1">
+              <i className="bi bi-shop-window me-2"></i>
+              Chợ Ca
+            </h2>
+            <p className="text-muted mb-0">Nhường, nhận và đổi ca làm việc</p>
+          </div>
+          {isStaff && (
+            <button className="btn btn-coffee" onClick={() => setShowGiveModal(true)}>
+              <i className="bi bi-plus-circle me-2"></i>
+              Đăng nhường ca
+            </button>
+          )}
         </div>
-        {isStaff && (
+      )}
+      {hideHeader && isStaff && (
+        <div className="d-flex justify-content-end mb-4">
           <button className="btn btn-coffee" onClick={() => setShowGiveModal(true)}>
             <i className="bi bi-plus-circle me-2"></i>
             Đăng nhường ca
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Store Filter */}
       {(isOwner || stores.length > 1) && (

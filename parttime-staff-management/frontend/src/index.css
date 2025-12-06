@@ -153,6 +153,67 @@ body {
   flex-shrink: 0;
 }
 
+/* Nested Menu Styles */
+.nav-menu-item {
+  margin: 2px 8px;
+}
+
+.nav-link-parent {
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-link-parent.expanded {
+  background: linear-gradient(
+    90deg,
+    rgba(212, 165, 116, 0.15) 0%,
+    rgba(212, 165, 116, 0.05) 100%
+  );
+  color: var(--coffee-cream);
+  border-left-color: var(--coffee-accent);
+}
+
+.nav-submenu {
+  margin-left: 1.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid rgba(212, 165, 116, 0.2);
+}
+
+.nav-link-sub {
+  padding: 0.625rem 1rem;
+  margin: 2px 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+  border-left: 2px solid transparent;
+}
+
+.nav-link-sub:hover {
+  color: var(--coffee-cream);
+  border-left-color: var(--coffee-accent);
+  background: linear-gradient(
+    90deg,
+    rgba(212, 165, 116, 0.1) 0%,
+    transparent 100%
+  );
+  transform: translateX(2px);
+}
+
+.nav-link-sub.active {
+  color: var(--coffee-cream);
+  border-left-color: var(--coffee-accent);
+  background: linear-gradient(
+    90deg,
+    rgba(212, 165, 116, 0.15) 0%,
+    rgba(212, 165, 116, 0.05) 100%
+  );
+  font-weight: 600;
+}
+
 .main-content {
   margin-left: 260px;
   padding: 2rem;

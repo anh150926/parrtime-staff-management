@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../app/store";
 import { logout } from "../features/auth/authSlice";
@@ -8,11 +8,25 @@ import { fetchUnreadCount } from "../features/notifications/notificationSlice";
 const Layout: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSelector((state: RootState) => state.auth);
   const { unreadCount } = useSelector(
     (state: RootState) => state.notifications
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [workScheduleExpanded, setWorkScheduleExpanded] = useState(true);
+
+  // Auto-expand menu if on work schedule related routes
+  useEffect(() => {
+    if (
+      location.pathname === "/work-schedule" ||
+      location.pathname === "/my-shifts" ||
+      location.pathname === "/shift-registration" ||
+      location.pathname === "/marketplace"
+    ) {
+      setWorkScheduleExpanded(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     dispatch(fetchUnreadCount());
@@ -165,6 +179,45 @@ const Layout: React.FC = () => {
             Tổng quan
           </NavLink>
 
+          {/* Staff can see Work Schedule with nested menu */}
+          {user?.role === "STAFF" && (
+            <div className="nav-menu-item">
+              <button
+                className={`nav-link nav-link-parent ${workScheduleExpanded ? "expanded" : ""}`}
+                onClick={() => setWorkScheduleExpanded(!workScheduleExpanded)}
+              >
+                <i className="bi bi-calendar-week"></i>
+                Ca làm của tôi
+                <i className={`bi ms-auto ${workScheduleExpanded ? "bi-chevron-up" : "bi-chevron-down"}`}></i>
+              </button>
+              {workScheduleExpanded && (
+                <div className="nav-submenu">
+                  <NavLink
+                    to="/my-shifts"
+                    className="nav-link nav-link-sub"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    Lịch làm việc
+                  </NavLink>
+                  <NavLink
+                    to="/shift-registration"
+                    className="nav-link nav-link-sub"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    Đăng ký lịch làm
+                  </NavLink>
+                  <NavLink
+                    to="/marketplace"
+                    className="nav-link nav-link-sub"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    Chợ Ca
+                  </NavLink>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Owner and Manager can see Users */}
           {(user?.role === "OWNER" || user?.role === "MANAGER") && (
             <NavLink
@@ -201,27 +254,17 @@ const Layout: React.FC = () => {
             </NavLink>
           )}
 
-          {/* Staff can see My Shifts */}
-          {user?.role === "STAFF" && (
+          {/* Marketplace for Owner and Manager (Staff can access via Work Schedule) */}
+          {(user?.role === "OWNER" || user?.role === "MANAGER") && (
             <NavLink
-              to="/my-shifts"
+              to="/marketplace"
               className="nav-link"
               onClick={() => setSidebarOpen(false)}
             >
-              <i className="bi bi-calendar-check"></i>
-              Ca làm của tôi
+              <i className="bi bi-shop-window"></i>
+              Chợ Ca
             </NavLink>
           )}
-
-          {/* Marketplace for all */}
-          <NavLink
-            to="/marketplace"
-            className="nav-link"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <i className="bi bi-shop-window"></i>
-            Chợ Ca
-          </NavLink>
 
           {/* Tasks */}
           <NavLink
