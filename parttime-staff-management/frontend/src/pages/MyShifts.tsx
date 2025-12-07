@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../app/store';
-import { fetchMyShifts, updateShiftAssignment } from '../features/shifts/shiftSlice';
+import { fetchMyShifts } from '../features/shifts/shiftSlice';
 import timeLogService from '../api/timeLogService';
 import Loading from '../components/Loading';
 import Toast from '../components/Toast';
@@ -123,15 +123,8 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
     setCheckInLoading(false);
   };
 
-  const handleConfirmShift = async (shiftId: number, status: 'CONFIRMED' | 'DECLINED') => {
-    try {
-      await dispatch(updateShiftAssignment({ shiftId, status })).unwrap();
-      setToast({ show: true, message: status === 'CONFIRMED' ? 'Đã xác nhận ca!' : 'Đã từ chối ca!', type: 'success' });
-      dispatch(fetchMyShifts());
-    } catch (error: any) {
-      setToast({ show: true, message: error || 'Có lỗi xảy ra!', type: 'error' });
-    }
-  };
+  // Nhân viên không thể tự xác nhận hay từ chối ca làm
+  // Chỉ quản lý mới có quyền phân công (xác nhận) ca làm
 
   const getMyAssignment = (shift: any) => {
     return shift.assignments?.find((a: any) => a.userId === user?.id);
@@ -191,10 +184,11 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
   // Load checked-in shifts từ localStorage
   const checkedInShiftIds = JSON.parse(localStorage.getItem('checkedInShiftIds') || '[]');
   
-  // Lọc bỏ các ca đã từ chối (nhưng giữ lại ca đã check-out để hiển thị "Đã hoàn thành")
+  // Chỉ hiển thị các ca đã được quản lý xác nhận (CONFIRMED)
+  // Các ca đã đăng ký (ASSIGNED) nhưng chưa được xác nhận sẽ không hiển thị
   const filteredShifts = myShifts.filter((shift: any) => {
     const assignment = getMyAssignment(shift);
-    return assignment?.status !== 'DECLINED';
+    return assignment?.status === 'CONFIRMED';
   });
 
   // Helper functions for weekly timetable
@@ -386,29 +380,26 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
                               // Skip active shift (shown at top)
                               if (isActive) return null;
 
+                              // Chỉ hiển thị các ca đã được quản lý xác nhận (CONFIRMED)
+                              // Tất cả ca trong filteredShifts đều có status CONFIRMED
                               let statusBadge = null;
                               let statusClass = '';
                               
-                              if (assignment?.status === 'ASSIGNED') {
-                                statusBadge = <span className="badge bg-warning">Chờ xác nhận</span>;
-                                statusClass = 'pending';
-                              } else if (assignment?.status === 'CONFIRMED') {
-                                if (checkInAvailable) {
-                                  statusBadge = <span className="badge bg-success">Sẵn sàng</span>;
-                                  statusClass = 'available';
-                                } else if (isCheckedIn) {
-                                  statusBadge = <span className="badge bg-info">Đang làm</span>;
-                                  statusClass = 'working';
-                                } else if (missedCheckIn) {
-                                  statusBadge = <span className="badge bg-danger">Nghỉ</span>;
-                                  statusClass = 'missed';
-                                } else {
-                                  statusBadge = <span className="badge bg-success">Đã xác nhận</span>;
-                                  statusClass = 'confirmed';
-                                }
+                              if (checkInAvailable) {
+                                statusBadge = <span className="badge bg-success">Sẵn sàng</span>;
+                                statusClass = 'available';
+                              } else if (isCheckedIn) {
+                                statusBadge = <span className="badge bg-info">Đang làm</span>;
+                                statusClass = 'working';
+                              } else if (missedCheckIn) {
+                                statusBadge = <span className="badge bg-danger">Nghỉ</span>;
+                                statusClass = 'missed';
                               } else if (isCheckedOut) {
                                 statusBadge = <span className="badge bg-secondary">Hoàn thành</span>;
                                 statusClass = 'completed';
+                              } else {
+                                statusBadge = <span className="badge bg-success">Đã xác nhận</span>;
+                                statusClass = 'confirmed';
                               }
 
                               return (
@@ -426,31 +417,7 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
                                     {formatTime(shift.startDatetime)} - {formatTime(shift.endDatetime)}
                                   </div>
                                   <div className="mb-1">{statusBadge}</div>
-                                  {assignment?.status === 'ASSIGNED' && !isCheckedOut && !isCheckedIn && !missedCheckIn && (
-                                    <div className="d-flex gap-1 mt-1">
-                                      <button
-                                        className="btn btn-sm btn-success flex-grow-1"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleConfirmShift(shift.id, 'CONFIRMED');
-                                        }}
-                                        style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
-                                      >
-                                        <i className="bi bi-check"></i>
-                                      </button>
-                                      <button
-                                        className="btn btn-sm btn-outline-danger flex-grow-1"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleConfirmShift(shift.id, 'DECLINED');
-                                        }}
-                                        style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
-                                      >
-                                        <i className="bi bi-x"></i>
-                                      </button>
-                                    </div>
-                                  )}
-                                  {assignment?.status === 'CONFIRMED' && checkInAvailable && (
+                                  {checkInAvailable && (
                                     <button 
                                       className="btn btn-sm btn-success w-100 mt-1"
                                       onClick={(e) => {

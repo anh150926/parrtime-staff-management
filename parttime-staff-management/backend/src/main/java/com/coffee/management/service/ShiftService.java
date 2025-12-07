@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -61,6 +62,16 @@ public class ShiftService {
             shifts = shiftRepository.findByStoreId(storeId);
         }
 
+        return shifts.stream()
+                .map(ShiftResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get actual shifts (not templates) by store for registration
+     */
+    public List<ShiftResponse> getActualShiftsForRegistration(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
+        List<Shift> shifts = shiftRepository.findActualShiftsByStoreAndDateRange(storeId, startDate, endDate);
         return shifts.stream()
                 .map(ShiftResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -253,26 +264,45 @@ public class ShiftService {
             }
         }
 
-        // Get current assignments count
+        // Get current confirmed assignments count (only count CONFIRMED status)
         List<ShiftAssignment> currentAssignments = assignmentRepository.findByShiftId(shiftId);
-        int currentCount = currentAssignments.size();
+        long currentConfirmedCount = currentAssignments.stream()
+                .filter(a -> a.getStatus() == AssignmentStatus.CONFIRMED)
+                .count();
         int requiredSlots = shift.getRequiredSlots() != null ? shift.getRequiredSlots() : 1;
 
-        // Count how many new users will be added
+        // Count how many new users will be added (including those with ASSIGNED status that will be confirmed)
         int newUsersCount = 0;
         for (Long userId : request.getUserIds()) {
-            if (!assignmentRepository.existsByShiftIdAndUserId(shiftId, userId)) {
+            Optional<ShiftAssignment> existingAssignment = assignmentRepository.findByShiftIdAndUserId(shiftId, userId);
+            if (existingAssignment.isEmpty()) {
+                // New assignment
+                newUsersCount++;
+            } else if (existingAssignment.get().getStatus() == AssignmentStatus.ASSIGNED) {
+                // Existing assignment with ASSIGNED status - will be updated to CONFIRMED
                 newUsersCount++;
             }
+            // If already CONFIRMED, don't count as new
         }
 
         // Check if adding new users would exceed required slots
-        if (currentCount + newUsersCount > requiredSlots) {
+        if (currentConfirmedCount + newUsersCount > requiredSlots) {
             throw new BadRequestException(
-                String.format("Không thể phân công thêm nhân viên. Ca này chỉ cần %d người, hiện đã có %d người được phân công.", 
-                    requiredSlots, currentCount)
+                String.format("Ca này chỉ cần %d người. Bạn đã chọn %d người, hiện đã có %d người được xác nhận. Vui lòng chọn đúng số người cần.", 
+                    requiredSlots, newUsersCount, currentConfirmedCount)
             );
         }
+        
+        // Lấy tất cả các assignment có status ASSIGNED (những người đã đăng ký nhưng chưa được xác nhận)
+        List<ShiftAssignment> allAssigned = assignmentRepository.findByShiftId(shiftId).stream()
+                .filter(a -> a.getStatus() == AssignmentStatus.ASSIGNED)
+                .collect(Collectors.toList());
+        
+        // Tìm những người đã đăng ký nhưng không được chọn để từ chối
+        List<Long> selectedUserIds = request.getUserIds();
+        List<ShiftAssignment> toDecline = allAssigned.stream()
+                .filter(a -> !selectedUserIds.contains(a.getUser().getId()))
+                .collect(Collectors.toList());
 
         // Check if shift is based on a template and if anyone has registered
         LocalDate shiftDate = shift.getStartDatetime().toLocalDate();
@@ -332,7 +362,23 @@ public class ShiftService {
             }
 
             // Check if already assigned
-            if (!assignmentRepository.existsByShiftIdAndUserId(shiftId, userId)) {
+            Optional<ShiftAssignment> existingAssignment = assignmentRepository.findByShiftIdAndUserId(shiftId, userId);
+            if (existingAssignment.isPresent()) {
+                // If assignment exists with ASSIGNED status, update to CONFIRMED
+                ShiftAssignment assignment = existingAssignment.get();
+                if (assignment.getStatus() == AssignmentStatus.ASSIGNED) {
+                    assignment.setStatus(AssignmentStatus.CONFIRMED);
+                    assignmentRepository.save(assignment);
+                    
+                    // Send notification
+                    notificationService.sendNotification(userId, 
+                            "Đăng ký ca làm đã được xác nhận",
+                            "Quản lý đã xác nhận đăng ký ca " + shift.getTitle() + " vào " + shift.getStartDatetime().toLocalDate(),
+                            "/my-shifts");
+                }
+                // If already CONFIRMED, do nothing
+            } else {
+                // Create new assignment with CONFIRMED status
                 ShiftAssignment assignment = ShiftAssignment.builder()
                         .shift(shift)
                         .user(user)
@@ -346,6 +392,18 @@ public class ShiftService {
                         "Bạn đã được phân công ca " + shift.getTitle() + " vào " + shift.getStartDatetime().toLocalDate(),
                         "/my-shifts");
             }
+        }
+        
+        // Từ chối những người đã đăng ký nhưng không được chọn
+        for (ShiftAssignment assignment : toDecline) {
+            assignment.setStatus(AssignmentStatus.DECLINED);
+            assignmentRepository.save(assignment);
+            
+            // Gửi thông báo cho người bị từ chối
+            notificationService.sendNotification(assignment.getUser().getId(),
+                    "Đăng ký ca làm đã bị từ chối",
+                    "Đăng ký ca " + shift.getTitle() + " vào " + shift.getStartDatetime().toLocalDate() + " của bạn đã bị từ chối. Quản lý đã chọn nhân viên khác cho ca này.",
+                    "/my-shifts");
         }
 
         // Refresh shift data
@@ -417,6 +475,63 @@ public class ShiftService {
         return shiftRepository.findByUserAssignment(userId, start).stream()
                 .map(ShiftResponse::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Register for an actual shift (not template) - allows staff to self-register
+     */
+    public ShiftResponse registerForShift(Long shiftId, UserPrincipal currentUser) {
+        Shift shift = shiftRepository.findById(shiftId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shift", "id", shiftId));
+
+        // Check if this is a template (should not be)
+        if (shift.getIsTemplate() != null && shift.getIsTemplate()) {
+            throw new BadRequestException("Cannot register for a shift template. Use shift registration endpoint instead.");
+        }
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
+
+        // Verify user belongs to same store
+        if (user.getStore() == null || !user.getStore().getId().equals(shift.getStore().getId())) {
+            throw new BadRequestException("You can only register for shifts in your store");
+        }
+
+        // Check if shift date is in the past
+        LocalDate shiftDate = shift.getStartDatetime().toLocalDate();
+        LocalDate today = LocalDate.now();
+        if (shiftDate.isBefore(today)) {
+            throw new BadRequestException("Không thể đăng ký ca đã qua. Chỉ có thể đăng ký ca trong tương lai.");
+        }
+
+        // Check if already assigned
+        if (assignmentRepository.existsByShiftIdAndUserId(shiftId, currentUser.getId())) {
+            throw new BadRequestException("Bạn đã đăng ký ca này rồi.");
+        }
+
+        // Không giới hạn số người đăng ký - tất cả nhân viên đều có thể đăng ký
+        // Quản lý sẽ chọn số người cần từ danh sách đăng ký
+
+        // Create assignment with ASSIGNED status (waiting for manager confirmation)
+        ShiftAssignment assignment = ShiftAssignment.builder()
+                .shift(shift)
+                .user(user)
+                .status(AssignmentStatus.ASSIGNED)
+                .build();
+        assignmentRepository.save(assignment);
+
+        // Send notification to manager
+        if (shift.getStore().getManager() != null) {
+            notificationService.sendNotification(shift.getStore().getManager().getId(),
+                    "Nhân viên đăng ký ca làm",
+                    user.getFullName() + " đã đăng ký ca " + shift.getTitle() + " vào " + shiftDate,
+                    "/shifts");
+        }
+
+        // Refresh shift data
+        Shift updatedShift = shiftRepository.findByIdWithRelations(shiftId)
+                .orElseThrow(() -> new ResourceNotFoundException("Shift", "id", shiftId));
+        return ShiftResponse.fromEntity(updatedShift);
     }
 }
 

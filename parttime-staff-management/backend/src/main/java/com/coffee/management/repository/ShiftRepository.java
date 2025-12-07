@@ -26,7 +26,7 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
             @Param("startDate") LocalDateTime startDate, 
             @Param("endDate") LocalDateTime endDate);
     
-    @Query("SELECT s FROM Shift s JOIN s.assignments a WHERE a.user.id = :userId AND s.startDatetime >= :startDate ORDER BY s.startDatetime")
+    @Query("SELECT s FROM Shift s JOIN s.assignments a WHERE a.user.id = :userId AND a.status = 'CONFIRMED' AND s.startDatetime >= :startDate ORDER BY s.startDatetime")
     List<Shift> findByUserAssignment(@Param("userId") Long userId, @Param("startDate") LocalDateTime startDate);
     
     @Query("SELECT COUNT(s) FROM Shift s WHERE s.store.id = :storeId AND MONTH(s.startDatetime) = :month AND YEAR(s.startDatetime) = :year")
@@ -45,6 +45,12 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
            "LEFT JOIN FETCH s.createdBy " +
            "WHERE s.store.id = :storeId AND s.isTemplate = true")
     List<Shift> findByStoreIdAndIsTemplateTrue(@Param("storeId") Long storeId);
+    
+    @Query("SELECT s FROM Shift s WHERE s.store.id = :storeId AND (s.isTemplate = false OR s.isTemplate IS NULL) AND s.startDatetime >= :startDate AND s.endDatetime <= :endDate ORDER BY s.startDatetime")
+    List<Shift> findActualShiftsByStoreAndDateRange(
+            @Param("storeId") Long storeId, 
+            @Param("startDate") LocalDateTime startDate, 
+            @Param("endDate") LocalDateTime endDate);
 }
 
 

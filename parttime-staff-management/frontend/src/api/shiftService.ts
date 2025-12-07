@@ -92,6 +92,22 @@ const shiftService = {
     const response = await api.get<ApiResponse<Shift[]>>(url);
     return response.data;
   },
+
+  getShiftsForRegistration: async (storeId: number, startDate?: string, endDate?: string): Promise<ApiResponse<Shift[]>> => {
+    let url = `/stores/${storeId}/shifts/for-registration`;
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (params.toString()) url += `?${params.toString()}`;
+    
+    const response = await api.get<ApiResponse<Shift[]>>(url);
+    return response.data;
+  },
+
+  registerForShift: async (shiftId: number): Promise<ApiResponse<Shift>> => {
+    const response = await api.post<ApiResponse<Shift>>(`/shifts/${shiftId}/register`);
+    return response.data;
+  },
 };
 
 export default shiftService;

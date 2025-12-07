@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../app/store";
-import shiftRegistrationService, { ShiftTemplate, ShiftRegistration as ShiftRegistrationData } from "../api/shiftRegistrationService";
+import shiftService, { Shift } from "../api/shiftService";
 import Loading from "../components/Loading";
 import Toast from "../components/Toast";
+import { formatTime } from "../utils/formatters";
 
 interface ShiftRegistrationProps {
   hideHeader?: boolean;
@@ -13,11 +14,10 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
   const { user } = useSelector((state: RootState) => state.auth);
   const { stores } = useSelector((state: RootState) => state.stores);
 
-  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [myRegistrations, setMyRegistrations] = useState<ShiftRegistrationData[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [myShifts, setMyShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState<Date>(getWeekStart(new Date()));
-  const [finalizedShifts, setFinalizedShifts] = useState<Set<string>>(new Set()); // Store "templateId_date" as key
   const [toast, setToast] = useState<{
     show: boolean;
     message: string;
@@ -55,13 +55,11 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
     return labels[type] || type;
   }
 
-  function getShiftTypeOrder(type: string): number {
-    const order: Record<string, number> = {
-      MORNING: 1,
-      AFTERNOON: 2,
-      EVENING: 3
-    };
-    return order[type] || 99;
+  function getShiftTypeFromTime(startTime: string): string {
+    const hour = new Date(startTime).getHours();
+    if (hour < 12) return 'MORNING';
+    if (hour < 18) return 'AFTERNOON';
+    return 'EVENING';
   }
 
   const loadData = async () => {
@@ -69,30 +67,20 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
     
     setLoading(true);
     try {
-      const [templatesRes, registrationsRes] = await Promise.all([
-        shiftRegistrationService.getShiftTemplates(user.storeId),
-        shiftRegistrationService.getMyRegistrationsForWeek(formatDate(weekStart))
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59);
+      
+      const startDateStr = weekStart.toISOString();
+      const endDateStr = weekEnd.toISOString();
+      
+      const [shiftsRes, myShiftsRes] = await Promise.all([
+        shiftService.getShiftsForRegistration(user.storeId, startDateStr, endDateStr),
+        shiftService.getMyShifts(startDateStr)
       ]);
       
-      setTemplates(templatesRes.data || []);
-      setMyRegistrations(registrationsRes.data || []);
-      
-      // Load finalized status for all templates and dates in this week
-      const finalizedSet = new Set<string>();
-      for (const template of templatesRes.data || []) {
-        for (let day = 1; day <= 7; day++) {
-          const date = getDateForDay(day);
-          try {
-            const finalizedResponse = await shiftRegistrationService.isShiftFinalized(template.id, formatDate(date));
-            if (finalizedResponse.data) {
-              finalizedSet.add(`${template.id}_${formatDate(date)}`);
-            }
-          } catch (error) {
-            // Ignore errors
-          }
-        }
-      }
-      setFinalizedShifts(finalizedSet);
+      setShifts(shiftsRes.data || []);
+      setMyShifts(myShiftsRes.data || []);
     } catch (error: any) {
       setToast({
         show: true,
@@ -104,14 +92,14 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
     }
   };
 
-  const handleRegister = async (template: ShiftTemplate, date: Date) => {
+  const handleRegister = async (shift: Shift) => {
     // Check if date is in the past
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const registerDate = new Date(date);
-    registerDate.setHours(0, 0, 0, 0);
+    const shiftDate = new Date(shift.startDatetime);
+    shiftDate.setHours(0, 0, 0, 0);
     
-    if (registerDate < today) {
+    if (shiftDate < today) {
       setToast({
         show: true,
         message: "Không thể đăng ký ca đã qua. Chỉ có thể đăng ký ca trong tương lai.",
@@ -121,14 +109,11 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
     }
 
     try {
-      await shiftRegistrationService.registerShift(template.id, {
-        shiftTemplateId: template.id,
-        registrationDate: formatDate(date)
-      });
+      await shiftService.registerForShift(shift.id);
       
       setToast({
         show: true,
-        message: `Đăng ký ca ${getShiftTypeLabel(template.shiftType)} thành công!`,
+        message: `Đăng ký ca "${shift.title}" thành công!`,
         type: "success"
       });
       
@@ -143,19 +128,34 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
     }
   };
 
-  const isRegistered = (templateId: number, date: Date): boolean => {
-    const dateStr = formatDate(date);
-    return myRegistrations.some(
-      reg => reg.shiftId === templateId && 
-             reg.registrationDate === dateStr && 
-             reg.status === "REGISTERED"
-    );
+  const isRegistered = (shiftId: number): boolean => {
+    return myShifts.some(shift => shift.id === shiftId);
   };
 
-  const getTemplatesForDay = (dayOfWeek: number): ShiftTemplate[] => {
-    return templates
-      .filter(t => t.dayOfWeek === dayOfWeek)
-      .sort((a, b) => getShiftTypeOrder(a.shiftType) - getShiftTypeOrder(b.shiftType));
+  const getMyAssignment = (shift: Shift) => {
+    if (!shift.assignments) return null;
+    return shift.assignments.find(a => a.userId === user?.id);
+  };
+
+  const getShiftsForDayAndType = (day: number, shiftType: string): Shift[] => {
+    const date = getDateForDay(day);
+    const dateStr = formatDate(date);
+    
+    return shifts.filter((shift: Shift) => {
+      const shiftDate = new Date(shift.startDatetime);
+      const shiftDateStr = formatDate(shiftDate);
+      
+      // Check if shift is on this day
+      if (shiftDateStr !== dateStr) return false;
+      
+      // Check if shift type matches
+      const shiftTypeFromTime = getShiftTypeFromTime(shift.startDatetime);
+      return shiftTypeFromTime === shiftType;
+    }).sort((a, b) => {
+      const timeA = new Date(a.startDatetime).getTime();
+      const timeB = new Date(b.startDatetime).getTime();
+      return timeA - timeB;
+    });
   };
 
   const getDateForDay = (dayOfWeek: number): Date => {
@@ -252,50 +252,75 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
               </thead>
               <tbody>
                 {["MORNING", "AFTERNOON", "EVENING"].map(shiftType => {
-                  const shiftTemplates = templates.filter(t => t.shiftType === shiftType);
-                  if (shiftTemplates.length === 0) return null;
+                  const shiftTypeLabels: Record<string, string> = {
+                    MORNING: "Ca sáng",
+                    AFTERNOON: "Ca chiều",
+                    EVENING: "Ca tối"
+                  };
 
                   return (
                     <tr key={shiftType}>
                       <td className="align-middle fw-bold">
-                        {getShiftTypeLabel(shiftType)}
+                        {shiftTypeLabels[shiftType]}
                       </td>
                       {weekDays.map(day => {
-                        const date = getDateForDay(day);
-                        const dayTemplates = getTemplatesForDay(day).filter(t => t.shiftType === shiftType);
+                        const dayShifts = getShiftsForDayAndType(day, shiftType);
                         
                         return (
-                          <td key={day} className="text-center align-middle">
-                            {dayTemplates.map(template => {
-                              const registered = isRegistered(template.id, date);
+                          <td key={day} className="text-center align-middle" style={{ verticalAlign: 'top' }}>
+                            {dayShifts.map(shift => {
+                              const registered = isRegistered(shift.id);
+                              const assignment = getMyAssignment(shift);
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const shiftDate = new Date(shift.startDatetime);
+                              shiftDate.setHours(0, 0, 0, 0);
+                              const isPast = shiftDate < today;
+                                  const assignedCount = shift.assignments?.filter((a: any) => a.status === 'CONFIRMED').length || 0;
+                                  const registeredCount = shift.assignments?.filter((a: any) => a.status === 'ASSIGNED').length || 0;
+                                  const requiredSlots = shift.requiredSlots || 1;
+                              
                               return (
-                                <div key={template.id} className="mb-2">
-                                  <div className="small mb-1">{template.title}</div>
-                                  <div className="small text-muted mb-2">
-                                    {template.startTime.substring(0, 5)} - {template.endTime.substring(0, 5)}
+                                <div key={shift.id} className="mb-2 p-2 border rounded bg-light">
+                                  <div className="small fw-bold mb-1">{shift.title}</div>
+                                  <div className="small text-muted mb-1">
+                                    {formatTime(shift.startDatetime)} - {formatTime(shift.endDatetime)}
+                                  </div>
+                                  <div className="small mb-1">
+                                    <span className="badge bg-info">
+                                      Cần {requiredSlots} người
+                                    </span>
+                                    {registeredCount > 0 && (
+                                      <span className="badge bg-secondary ms-1">
+                                        {registeredCount} người đã đăng ký
+                                      </span>
+                                    )}
                                   </div>
                                   {(() => {
-                                    const today = new Date();
-                                    today.setHours(0, 0, 0, 0);
-                                    const registerDate = new Date(date);
-                                    registerDate.setHours(0, 0, 0, 0);
-                                    const isPast = registerDate < today;
-                                    const isFinalized = finalizedShifts.has(`${template.id}_${formatDate(date)}`);
-                                    
-                                    if (registered) {
-                                      return (
-                                        <span className="badge bg-success">
-                                          <i className="bi bi-check-circle me-1"></i>
-                                          Đã đăng ký
-                                        </span>
-                                      );
-                                    } else if (isFinalized) {
-                                      return (
-                                        <span className="badge bg-warning">
-                                          <i className="bi bi-lock-fill me-1"></i>
-                                          Đã chốt
-                                        </span>
-                                      );
+                                    if (registered && assignment) {
+                                      const status = assignment.status;
+                                      if (status === 'CONFIRMED') {
+                                        return (
+                                          <span className="badge bg-success">
+                                            <i className="bi bi-check-circle me-1"></i>
+                                            Đã xác nhận
+                                          </span>
+                                        );
+                                      } else if (status === 'DECLINED') {
+                                        return (
+                                          <span className="badge bg-danger">
+                                            <i className="bi bi-x-circle me-1"></i>
+                                            Đã từ chối
+                                          </span>
+                                        );
+                                      } else {
+                                        return (
+                                          <span className="badge bg-warning">
+                                            <i className="bi bi-clock me-1"></i>
+                                            Chờ xác nhận
+                                          </span>
+                                        );
+                                      }
                                     } else if (isPast) {
                                       return (
                                         <span className="badge bg-secondary">
@@ -306,8 +331,9 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
                                     } else {
                                       return (
                                         <button
-                                          className="btn btn-sm btn-coffee"
-                                          onClick={() => handleRegister(template, date)}
+                                          className="btn btn-sm btn-coffee w-100"
+                                          onClick={() => handleRegister(shift)}
+                                          style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }}
                                         >
                                           <i className="bi bi-check-lg me-1"></i>
                                           Đăng ký
@@ -318,7 +344,7 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
                                 </div>
                               );
                             })}
-                            {dayTemplates.length === 0 && (
+                            {dayShifts.length === 0 && (
                               <span className="text-muted small">-</span>
                             )}
                           </td>

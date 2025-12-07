@@ -70,7 +70,11 @@ const Shifts: React.FC = () => {
   }
 
   function formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
+    // Use local date components to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   function getDayName(dayOfWeek: number): string {
@@ -234,21 +238,33 @@ const Shifts: React.FC = () => {
       const [startHours, startMinutes] = shiftTemplateForm.startTime.split(':').map(Number);
       const [endHours, endMinutes] = shiftTemplateForm.endTime.split(':').map(Number);
       
+      // Create date objects and set time in local timezone
       const startDatetime = new Date(date);
       startDatetime.setHours(startHours, startMinutes, 0, 0);
       
       const endDatetime = new Date(date);
       endDatetime.setHours(endHours, endMinutes, 0, 0);
       
-      // Format datetime for API
+      // Format datetime for API - use local time components to avoid timezone conversion
       const formatDateTimeForAPI = (dt: Date): string => {
         const year = dt.getFullYear();
         const month = String(dt.getMonth() + 1).padStart(2, '0');
         const day = String(dt.getDate()).padStart(2, '0');
         const hours = String(dt.getHours()).padStart(2, '0');
         const minutes = String(dt.getMinutes()).padStart(2, '0');
+        // Format as local datetime without timezone (backend should handle as local time)
         return `${year}-${month}-${day}T${hours}:${minutes}:00`;
       };
+      
+      console.log('Creating shift:', {
+        selectedDay,
+        selectedShiftType,
+        date: formatDate(date),
+        startTime: shiftTemplateForm.startTime,
+        startDatetime: formatDateTimeForAPI(startDatetime),
+        startDatetimeLocal: startDatetime.toString(),
+        endDatetime: formatDateTimeForAPI(endDatetime)
+      });
       
       // Tạo ca thực tế (không phải template) cho ngày cụ thể
       await dispatch(createShift({
@@ -298,19 +314,60 @@ const Shifts: React.FC = () => {
     const dateStr = formatDate(date);
     
     return shifts.filter((shift: any) => {
-      const shiftDate = new Date(shift.startDatetime);
+      // Parse shift datetime - backend returns LocalDateTime as ISO string without timezone
+      // When parsing, we need to treat it as local time, not UTC
+      let shiftDate: Date;
+      if (shift.startDatetime.includes('T') && !shift.startDatetime.includes('Z') && !shift.startDatetime.includes('+') && !shift.startDatetime.includes('-', 10)) {
+        // LocalDateTime format: "2024-12-04T08:00:00" - parse as local time
+        const [datePart, timePart] = shift.startDatetime.split('T');
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hours, minutes, seconds = 0] = timePart.split(':').map(Number);
+        shiftDate = new Date(year, month - 1, day, hours, minutes, seconds);
+      } else {
+        // Fallback to standard Date parsing
+        shiftDate = new Date(shift.startDatetime);
+      }
+      
       const shiftDateStr = formatDate(shiftDate);
       
-      // Check if shift is on this day
-      if (shiftDateStr !== dateStr) return false;
+      // Check if shift is on this day (compare date strings)
+      if (shiftDateStr !== dateStr) {
+        // Debug log for Monday morning shifts
+        if (day === 2 && shiftType === 'MORNING') {
+          console.log('Shift filtered out by date:', {
+            shiftId: shift.id,
+            shiftTitle: shift.title,
+            shiftStartDatetime: shift.startDatetime,
+            shiftDateStr,
+            expectedDateStr: dateStr,
+            day,
+            shiftType
+          });
+        }
+        return false;
+      }
       
       // Check if shift type matches (based on time ranges)
+      // Use local hours to avoid timezone issues
       const shiftHour = shiftDate.getHours();
-      if (shiftType === 'MORNING' && shiftHour >= 6 && shiftHour < 12) return true;
-      if (shiftType === 'AFTERNOON' && shiftHour >= 12 && shiftHour < 17) return true;
-      if (shiftType === 'EVENING' && shiftHour >= 17 && shiftHour < 23) return true;
+      let matchesType = false;
+      if (shiftType === 'MORNING' && shiftHour >= 6 && shiftHour < 12) matchesType = true;
+      if (shiftType === 'AFTERNOON' && shiftHour >= 12 && shiftHour < 17) matchesType = true;
+      if (shiftType === 'EVENING' && shiftHour >= 17 && shiftHour < 23) matchesType = true;
       
-      return false;
+      // Debug log for Monday morning shifts
+      if (day === 2 && shiftType === 'MORNING') {
+        console.log('Shift type check:', {
+          shiftId: shift.id,
+          shiftTitle: shift.title,
+          shiftStartDatetime: shift.startDatetime,
+          shiftHour,
+          shiftType,
+          matchesType
+        });
+      }
+      
+      return matchesType;
     });
   };
 
@@ -375,8 +432,9 @@ const Shifts: React.FC = () => {
 
   const handleOpenAssignModal = (shift: any) => {
     setSelectedShift(shift);
-    const assignedIds = shift.assignments?.map((a: any) => a.userId) || [];
-    setSelectedUserIds(assignedIds);
+    // Chỉ chọn những nhân viên đã được xác nhận (CONFIRMED) để giữ trạng thái
+    const confirmedIds = shift.assignments?.filter((a: any) => a.status === 'CONFIRMED').map((a: any) => a.userId) || [];
+    setSelectedUserIds(confirmedIds);
     setShowAssignModal(true);
   };
 
@@ -421,18 +479,30 @@ const Shifts: React.FC = () => {
     if (!selectedShift) return;
     
     try {
-      // Chỉ thêm những nhân viên mới (chưa được phân công)
-      const currentAssignedIds = selectedShift.assignments?.map((a: any) => a.userId) || [];
-      const newUserIds = selectedUserIds.filter(id => !currentAssignedIds.includes(id));
-      const currentCount = selectedShift.assignments?.length || 0;
+      // Lấy danh sách nhân viên đã được xác nhận (CONFIRMED)
+      const confirmedIds = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').map((a: any) => a.userId) || [];
+      const currentConfirmedCount = confirmedIds.length;
+      // Lấy danh sách nhân viên được chọn nhưng chưa được xác nhận
+      const newUserIds = selectedUserIds.filter(id => !confirmedIds.includes(id));
       const requiredSlots = selectedShift.requiredSlots || 1;
+      const remainingSlots = requiredSlots - currentConfirmedCount;
       
-      // Kiểm tra xem có vượt quá số người cần không
-      if (currentCount + newUserIds.length > requiredSlots) {
+      // Kiểm tra xem đã chọn đúng số người còn thiếu chưa (hoặc ít nhất 1 người nếu còn thiếu)
+      if (remainingSlots > 0 && newUserIds.length === 0) {
         setToast({ 
           show: true, 
-          message: `Không thể phân công thêm. Ca này chỉ cần ${requiredSlots} người, hiện đã có ${currentCount} người.`, 
-          type: 'error' 
+          message: `Ca này còn thiếu ${remainingSlots} người. Vui lòng chọn ít nhất 1 người để xác nhận.`, 
+          type: 'warning' 
+        });
+        return;
+      }
+      
+      // Kiểm tra không được chọn quá số người còn thiếu
+      if (remainingSlots > 0 && newUserIds.length > remainingSlots) {
+        setToast({ 
+          show: true, 
+          message: `Ca này còn thiếu ${remainingSlots} người. Bạn đã chọn ${newUserIds.length} người. Vui lòng chọn đúng số người còn thiếu.`, 
+          type: 'warning' 
         });
         return;
       }
@@ -441,9 +511,19 @@ const Shifts: React.FC = () => {
         await dispatch(
           assignStaffToShift({ shiftId: selectedShift.id, data: { userIds: newUserIds } })
         ).unwrap();
-        setToast({ show: true, message: 'Phân công nhân viên thành công!', type: 'success' });
+        
+        // Đếm số người bị từ chối
+        const allRegisteredIds = selectedShift.assignments?.filter((a: any) => a.status === 'ASSIGNED').map((a: any) => a.userId) || [];
+        const declinedCount = allRegisteredIds.filter((id: number) => !newUserIds.includes(id)).length;
+        
+        let message = `Xác nhận phân công ${newUserIds.length} nhân viên thành công!`;
+        if (declinedCount > 0) {
+          message += ` ${declinedCount} nhân viên không được chọn đã nhận thông báo từ chối.`;
+        }
+        
+        setToast({ show: true, message: message, type: 'success' });
       } else {
-        setToast({ show: true, message: 'Không có nhân viên mới để thêm!', type: 'info' });
+        setToast({ show: true, message: 'Không có nhân viên nào được chọn!', type: 'info' });
       }
       
       // Refresh shifts
@@ -1030,130 +1110,197 @@ const Shifts: React.FC = () => {
                     )}
                   </div>
                   
-                  {/* Danh sách nhân viên đã được phân công */}
-                  {selectedShift.assignments && selectedShift.assignments.length > 0 && (
+                  {/* Danh sách nhân viên đã được phân công (CONFIRMED) */}
+                  {selectedShift.assignments && selectedShift.assignments.filter((a: any) => a.status === 'CONFIRMED').length > 0 && (
                     <div className="mb-4">
                       <h6 className="mb-2">
                         <i className="bi bi-people-fill me-2"></i>
-                        Nhân viên đã được phân công ({selectedShift.assignments.length})
+                        Nhân viên đã được phân công ({selectedShift.assignments.filter((a: any) => a.status === 'CONFIRMED').length})
                       </h6>
                       <div className="list-group">
-                        {selectedShift.assignments.map((assignment: any) => {
-                          const staff = storeStaff.find((s) => s.id === assignment.userId);
-                          if (!staff) return null;
-                          return (
-                            <div
-                              key={assignment.id}
-                              className="list-group-item d-flex align-items-center justify-content-between"
-                            >
-                              <div className="d-flex align-items-center">
-                                <div className="avatar me-2">{staff.fullName.charAt(0)}</div>
-                                <div>
-                                  <strong>{staff.fullName}</strong>
-                                  <br />
-                                  <small className={`text-muted ${
-                                    assignment.status === 'CONFIRMED' ? 'text-success' :
-                                    assignment.status === 'DECLINED' ? 'text-danger' : 'text-warning'
-                                  }`}>
-                                    {assignment.status === 'CONFIRMED' ? '✓ Đã xác nhận' :
-                                     assignment.status === 'DECLINED' ? '✗ Đã từ chối' : '⏳ Đang chờ'}
-                                  </small>
-                                </div>
-                              </div>
-                              <button
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (window.confirm(`Bạn có chắc chắn muốn xóa phân công cho ${staff.fullName}?`)) {
-                                    handleRemoveAssignment(assignment.userId);
-                                  }
-                                }}
-                                title="Xóa phân công"
+                        {selectedShift.assignments
+                          .filter((a: any) => a.status === 'CONFIRMED')
+                          .map((assignment: any) => {
+                            const staff = storeStaff.find((s) => s.id === assignment.userId);
+                            if (!staff) return null;
+                            return (
+                              <div
+                                key={assignment.id}
+                                className="list-group-item d-flex align-items-center justify-content-between"
                               >
-                                <i className="bi bi-trash"></i>
-                              </button>
-                            </div>
-                          );
-                        })}
+                                <div className="d-flex align-items-center">
+                                  <div className="avatar me-2">{staff.fullName.charAt(0)}</div>
+                                  <div>
+                                    <strong>{staff.fullName}</strong>
+                                    <br />
+                                    <small className="text-success">
+                                      ✓ Đã xác nhận
+                                    </small>
+                                  </div>
+                                </div>
+                                <button
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Bạn có chắc chắn muốn xóa phân công cho ${staff.fullName}?`)) {
+                                      handleRemoveAssignment(assignment.userId);
+                                    }
+                                  }}
+                                  title="Xóa phân công"
+                                >
+                                  <i className="bi bi-trash"></i>
+                                </button>
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
 
-                  {/* Danh sách nhân viên chưa được phân công */}
+                  {/* Danh sách nhân viên đã đăng ký (ASSIGNED) - chờ quản lý xác nhận */}
                   <div>
-                    <h6 className="mb-2">
-                      <i className="bi bi-person-plus me-2"></i>
-                      Thêm nhân viên mới
-                    </h6>
-                    <div className="list-group">
-                      {storeStaff
-                        .filter((staff) => {
-                          const assignedIds = selectedShift.assignments?.map((a: any) => a.userId) || [];
-                          return !assignedIds.includes(staff.id);
+                    {(() => {
+                      const currentConfirmedCount = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').length || 0;
+                      const requiredSlots = selectedShift.requiredSlots || 1;
+                      const remainingSlots = requiredSlots - currentConfirmedCount;
+                      
+                      return (
+                        <>
+                          <h6 className="mb-2">
+                            <i className="bi bi-person-plus me-2"></i>
+                            Nhân viên đã đăng ký - Chọn {remainingSlots > 0 ? remainingSlots : 0} người để xác nhận phân công
+                          </h6>
+                          <div className="alert alert-info mb-3">
+                            <i className="bi bi-info-circle me-2"></i>
+                            <strong>Lưu ý:</strong> Ca này cần <strong>{requiredSlots} người</strong>. 
+                            Hiện đã có <strong>{currentConfirmedCount} người</strong> được xác nhận. 
+                            {remainingSlots > 0 ? (
+                              <>Cần thêm <strong>{remainingSlots} người</strong>. Vui lòng chọn {remainingSlots} người từ danh sách đăng ký. Những người không được chọn sẽ tự động bị từ chối.</>
+                            ) : (
+                              <>Ca này đã đủ người. Bạn vẫn có thể thay đổi phân công nếu cần.</>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                    {(() => {
+                      // Lấy danh sách nhân viên đã đăng ký (có assignment với status ASSIGNED)
+                      const registeredStaff = selectedShift.assignments
+                        ?.filter((a: any) => a.status === 'ASSIGNED')
+                        .map((a: any) => {
+                          const staff = storeStaff.find((s) => s.id === a.userId);
+                          return staff ? { ...staff, assignmentId: a.id } : null;
                         })
-                        .map((staff) => {
-                          const currentCount = selectedShift.assignments?.length || 0;
-                          const requiredSlots = selectedShift.requiredSlots || 1;
-                          const isSelected = selectedUserIds.includes(staff.id);
-                          const newUserIds = selectedUserIds.filter(id => {
-                            const assignedIds = selectedShift.assignments?.map((a: any) => a.userId) || [];
-                            return !assignedIds.includes(id);
-                          });
-                          const newCount = newUserIds.length;
-                          // Disable nếu đã đủ người và checkbox này chưa được chọn
-                          const isDisabled = currentCount >= requiredSlots && !isSelected;
-                          
-                          return (
-                            <label
-                              key={staff.id}
-                              className={`list-group-item list-group-item-action d-flex align-items-center ${isDisabled ? 'opacity-50' : ''}`}
-                            >
-                              <input
-                                type="checkbox"
-                                className="form-check-input me-3"
-                                checked={isSelected}
-                                disabled={isDisabled}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    // Kiểm tra trước khi thêm
-                                    if (currentCount + newCount >= requiredSlots) {
-                                      setToast({ 
-                                        show: true, 
-                                        message: `Ca này chỉ cần ${requiredSlots} người. Không thể thêm thêm nhân viên.`, 
-                                        type: 'warning' 
-                                      });
-                                      return;
+                        .filter((s: any) => s !== null) || [];
+
+                      if (registeredStaff.length === 0) {
+                        return (
+                          <div className="alert alert-info">
+                            <i className="bi bi-info-circle me-2"></i>
+                            Chưa có nhân viên nào đăng ký ca này.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="list-group">
+                          {registeredStaff.map((staff: any) => {
+                            const currentConfirmedCount = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').length || 0;
+                            const requiredSlots = selectedShift.requiredSlots || 1;
+                            const remainingSlots = requiredSlots - currentConfirmedCount;
+                            const isSelected = selectedUserIds.includes(staff.id);
+                            const newUserIds = selectedUserIds.filter(id => {
+                              const confirmedIds = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').map((a: any) => a.userId) || [];
+                              return !confirmedIds.includes(id);
+                            });
+                            const newCount = newUserIds.length;
+                            // Disable nếu đã đủ người và checkbox này chưa được chọn
+                            const isDisabled = remainingSlots <= 0 && !isSelected;
+                            
+                            return (
+                              <label
+                                key={staff.id}
+                                className={`list-group-item list-group-item-action d-flex align-items-center ${isDisabled ? 'opacity-50' : ''}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input me-3"
+                                  checked={isSelected}
+                                  disabled={isDisabled}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      // Kiểm tra trước khi thêm - không cho phép chọn quá số người còn thiếu
+                                      if (newCount + 1 > remainingSlots) {
+                                        setToast({ 
+                                          show: true, 
+                                          message: `Ca này còn thiếu ${remainingSlots} người. Bạn đã chọn ${newCount} người. Vui lòng bỏ chọn một số người trước khi chọn thêm.`, 
+                                          type: 'warning' 
+                                        });
+                                        return;
+                                      }
+                                      setSelectedUserIds([...selectedUserIds, staff.id]);
+                                    } else {
+                                      setSelectedUserIds(selectedUserIds.filter((id) => id !== staff.id));
                                     }
-                                    setSelectedUserIds([...selectedUserIds, staff.id]);
-                                  } else {
-                                    setSelectedUserIds(selectedUserIds.filter((id) => id !== staff.id));
-                                  }
-                                }}
-                              />
-                              <div className="avatar me-2">{staff.fullName.charAt(0)}</div>
-                              <div>
-                                <strong>{staff.fullName}</strong>
-                                <br />
-                                <small className="text-muted">{staff.email}</small>
-                              </div>
-                            </label>
-                          );
-                        })}
-                      {storeStaff.filter((staff) => {
-                        const assignedIds = selectedShift.assignments?.map((a: any) => a.userId) || [];
-                        return !assignedIds.includes(staff.id);
-                      }).length === 0 && (
-                        <p className="text-muted text-center py-3">
-                          Tất cả nhân viên đã được phân công
-                        </p>
-                      )}
-                    </div>
+                                  }}
+                                />
+                                <div className="avatar me-2">{staff.fullName.charAt(0)}</div>
+                                <div>
+                                  <strong>{staff.fullName}</strong>
+                                  <br />
+                                  <small className="text-muted">{staff.email}</small>
+                                  <br />
+                                  <small className="text-info">
+                                    <i className="bi bi-clock-history me-1"></i>
+                                    Đã đăng ký
+                                  </small>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
+
+                  {/* Danh sách nhân viên đã từ chối (DECLINED) - chỉ hiển thị thông tin */}
+                  {selectedShift.assignments && selectedShift.assignments.filter((a: any) => a.status === 'DECLINED').length > 0 && (
+                    <div className="mt-4">
+                      <h6 className="mb-2">
+                        <i className="bi bi-x-circle me-2"></i>
+                        Nhân viên đã từ chối ({selectedShift.assignments.filter((a: any) => a.status === 'DECLINED').length})
+                      </h6>
+                      <div className="list-group">
+                        {selectedShift.assignments
+                          .filter((a: any) => a.status === 'DECLINED')
+                          .map((assignment: any) => {
+                            const staff = storeStaff.find((s) => s.id === assignment.userId);
+                            if (!staff) return null;
+                            return (
+                              <div
+                                key={assignment.id}
+                                className="list-group-item d-flex align-items-center"
+                              >
+                                <div className="avatar me-2">{staff.fullName.charAt(0)}</div>
+                                <div>
+                                  <strong>{staff.fullName}</strong>
+                                  <br />
+                                  <small className="text-danger">
+                                    ✗ Đã từ chối
+                                  </small>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
                   
                   {storeStaff.length === 0 && (
-                    <p className="text-muted text-center py-3">
+                    <div className="alert alert-warning">
+                      <i className="bi bi-exclamation-triangle me-2"></i>
                       Không có nhân viên nào tại cơ sở này
-                    </p>
+                    </div>
                   )}
                 </div>
                 <div className="modal-footer">
@@ -1169,19 +1316,32 @@ const Shifts: React.FC = () => {
                     className="btn btn-coffee"
                     onClick={handleAssignStaff}
                     disabled={(() => {
-                      const currentCount = selectedShift.assignments?.length || 0;
+                      const currentConfirmedCount = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').length || 0;
                       const requiredSlots = selectedShift.requiredSlots || 1;
+                      const remainingSlots = requiredSlots - currentConfirmedCount;
                       const newUserIds = selectedUserIds.filter(id => {
-                        const assignedIds = selectedShift.assignments?.map((a: any) => a.userId) || [];
-                        return !assignedIds.includes(id);
+                        const confirmedIds = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').map((a: any) => a.userId) || [];
+                        return !confirmedIds.includes(id);
                       });
-                      return newUserIds.length === 0 || currentCount >= requiredSlots;
+                      // Cho phép xác nhận khi:
+                      // - Còn thiếu người và đã chọn ít nhất 1 người (không quá số người còn thiếu)
+                      // - Hoặc đã đủ người nhưng muốn thay đổi phân công
+                      if (remainingSlots > 0) {
+                        return newUserIds.length === 0 || newUserIds.length > remainingSlots;
+                      }
+                      // Nếu đã đủ người, vẫn cho phép xác nhận để thay đổi phân công
+                      return newUserIds.length === 0;
                     })()}
                   >
-                    Thêm nhân viên ({selectedUserIds.filter(id => {
-                      const assignedIds = selectedShift.assignments?.map((a: any) => a.userId) || [];
-                      return !assignedIds.includes(id);
-                    }).length})
+                    Xác nhận phân công ({selectedUserIds.filter(id => {
+                      const confirmedIds = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').map((a: any) => a.userId) || [];
+                      return !confirmedIds.includes(id);
+                    }).length}/{(() => {
+                      const currentConfirmedCount = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').length || 0;
+                      const requiredSlots = selectedShift.requiredSlots || 1;
+                      const remainingSlots = requiredSlots - currentConfirmedCount;
+                      return remainingSlots > 0 ? remainingSlots : requiredSlots;
+                    })()})
                   </button>
                 </div>
               </div>

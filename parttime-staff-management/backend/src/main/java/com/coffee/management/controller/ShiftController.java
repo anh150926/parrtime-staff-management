@@ -117,6 +117,26 @@ public class ShiftController {
         List<ShiftResponse> shifts = shiftService.getMyShifts(currentUser.getId(), startDate);
         return ResponseEntity.ok(ApiResponse.success(shifts));
     }
+
+    @PostMapping("/shifts/{id}/register")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Register for an actual shift (self-registration)")
+    public ResponseEntity<ApiResponse<ShiftResponse>> registerForShift(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        ShiftResponse shift = shiftService.registerForShift(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Đăng ký ca thành công", shift));
+    }
+
+    @GetMapping("/stores/{storeId}/shifts/for-registration")
+    @Operation(summary = "Get actual shifts (not templates) for registration")
+    public ResponseEntity<ApiResponse<List<ShiftResponse>>> getShiftsForRegistration(
+            @PathVariable Long storeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        List<ShiftResponse> shifts = shiftService.getActualShiftsForRegistration(storeId, startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success(shifts));
+    }
 }
 
 
