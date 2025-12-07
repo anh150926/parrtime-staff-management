@@ -18,3 +18,4 @@ CREATE TABLE shift_finalizations (
 CREATE INDEX idx_finalizations_template ON shift_finalizations(shift_template_id);
 CREATE INDEX idx_finalizations_date ON shift_finalizations(finalization_date);
 
+

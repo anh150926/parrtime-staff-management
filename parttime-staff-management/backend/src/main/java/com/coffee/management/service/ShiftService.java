@@ -6,7 +6,6 @@ import com.coffee.management.exception.BadRequestException;
 import com.coffee.management.exception.ForbiddenException;
 import com.coffee.management.exception.ResourceNotFoundException;
 import com.coffee.management.repository.*;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import com.coffee.management.security.UserPrincipal;
@@ -103,38 +102,10 @@ public class ShiftService {
             throw new BadRequestException("End time must be after start time");
         }
 
-        // Check if this shift is based on a template and if anyone has registered
-        LocalDate shiftDate = request.getStartDatetime().toLocalDate();
-        java.time.DayOfWeek dayOfWeek = shiftDate.getDayOfWeek();
-        int dayOfWeekValue = dayOfWeek.getValue(); // 1=Monday, 7=Sunday
-        
-        // Try to find matching template
-        List<Shift> templates = shiftRepository.findByStoreIdAndIsTemplateTrue(storeId);
-        Shift matchingTemplate = null;
-        for (Shift template : templates) {
-            if (template.getDayOfWeek() != null && template.getDayOfWeek().equals(dayOfWeekValue)) {
-                // Check shift type by comparing time ranges
-                LocalTime shiftStart = request.getStartDatetime().toLocalTime();
-                LocalTime templateStart = template.getStartDatetime().toLocalTime();
-                if (template.getShiftType() != null && 
-                    Math.abs(shiftStart.toSecondOfDay() - templateStart.toSecondOfDay()) < 3600) { // Within 1 hour
-                    matchingTemplate = template;
-                    break;
-                }
-            }
-        }
-        
-        // If template found, check if anyone has registered
-        if (matchingTemplate != null) {
-            List<com.coffee.management.entity.ShiftRegistration> registrations = registrationRepository
-                    .findActiveRegistrationsByShiftAndDate(matchingTemplate.getId(), shiftDate);
-            
-            if (registrations.isEmpty()) {
-                throw new BadRequestException(
-                    "Chưa có nhân viên nào đăng ký ca làm này. Vui lòng đợi nhân viên đăng ký trước khi tạo ca."
-                );
-            }
-        }
+        // Note: Manager can create shifts directly without requiring staff registration.
+        // The registration check is only needed when finalizing a shift from a template,
+        // which is handled in ShiftRegistrationService.finalizeShift().
+        // This method allows direct shift creation for manual scheduling.
 
         User creator = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", currentUser.getId()));
@@ -305,37 +276,10 @@ public class ShiftService {
                 .collect(Collectors.toList());
 
         // Check if shift is based on a template and if anyone has registered
-        LocalDate shiftDate = shift.getStartDatetime().toLocalDate();
-        java.time.DayOfWeek dayOfWeek = shiftDate.getDayOfWeek();
-        int dayOfWeekValue = dayOfWeek.getValue(); // 1=Monday, 7=Sunday
-        
-        // Try to find matching template
-        List<Shift> templates = shiftRepository.findByStoreIdAndIsTemplateTrue(shift.getStore().getId());
-        Shift matchingTemplate = null;
-        for (Shift template : templates) {
-            if (template.getDayOfWeek() != null && template.getDayOfWeek().equals(dayOfWeekValue)) {
-                // Check shift type by comparing time ranges
-                LocalTime shiftStart = shift.getStartDatetime().toLocalTime();
-                LocalTime templateStart = template.getStartDatetime().toLocalTime();
-                if (template.getShiftType() != null && 
-                    Math.abs(shiftStart.toSecondOfDay() - templateStart.toSecondOfDay()) < 3600) { // Within 1 hour
-                    matchingTemplate = template;
-                    break;
-                }
-            }
-        }
-        
-        // If template found, check if anyone has registered
-        if (matchingTemplate != null) {
-            List<com.coffee.management.entity.ShiftRegistration> registrations = registrationRepository
-                    .findActiveRegistrationsByShiftAndDate(matchingTemplate.getId(), shiftDate);
-            
-            if (registrations.isEmpty()) {
-                throw new BadRequestException(
-                    String.format("Chưa có nhân viên nào đăng ký ca làm này. Vui lòng đợi nhân viên đăng ký trước khi phân công.")
-                );
-            }
-        }
+        // Note: Manager can assign any staff to a shift, regardless of registration.
+        // Registration checks are only needed when finalizing a shift from a template,
+        // which is handled in ShiftRegistrationService.finalizeShift().
+        // This method allows direct assignment for manual scheduling.
 
         for (Long userId : request.getUserIds()) {
             User user = userRepository.findById(userId)
@@ -344,21 +288,6 @@ public class ShiftService {
             // Verify user belongs to same store
             if (user.getStore() == null || !user.getStore().getId().equals(shift.getStore().getId())) {
                 throw new BadRequestException("User " + user.getFullName() + " does not belong to this store");
-            }
-
-            // If template found, check if this specific user has registered
-            if (matchingTemplate != null) {
-                boolean hasRegistered = registrationRepository
-                        .findByShiftIdAndUserIdAndRegistrationDate(matchingTemplate.getId(), userId, shiftDate)
-                        .map(reg -> reg.getStatus() == com.coffee.management.entity.RegistrationStatus.REGISTERED)
-                        .orElse(false);
-                
-                if (!hasRegistered) {
-                    throw new BadRequestException(
-                        String.format("Nhân viên %s chưa đăng ký ca làm này. Chỉ có thể phân công cho nhân viên đã đăng ký.", 
-                            user.getFullName())
-                    );
-                }
             }
 
             // Check if already assigned

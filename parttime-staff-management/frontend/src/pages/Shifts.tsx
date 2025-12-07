@@ -64,9 +64,16 @@ const Shifts: React.FC = () => {
 
   function getWeekStart(date: Date): Date {
     const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
+    d.setHours(0, 0, 0, 0); // Reset to midnight to avoid timezone issues
+    const day = d.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+    // Calculate days to subtract to get to Monday
+    // If day is 0 (Sunday), subtract 6 days to get Monday
+    // If day is 1 (Monday), subtract 0 days
+    // If day is 2 (Tuesday), subtract 1 day
+    // etc.
+    const daysToSubtract = day === 0 ? 6 : day - 1;
+    d.setDate(d.getDate() - daysToSubtract);
+    return d;
   }
 
   function formatDate(date: Date): string {
@@ -109,14 +116,39 @@ const Shifts: React.FC = () => {
       const weekEndDate = new Date(weekEnd);
       weekEndDate.setHours(23, 59, 59);
       
-      const startDateStr = weekStart.toISOString();
-      const endDateStr = weekEndDate.toISOString();
+      // Format as local datetime string to avoid timezone conversion issues
+      const formatDateTimeForAPI = (dt: Date): string => {
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const minutes = String(dt.getMinutes()).padStart(2, '0');
+        const seconds = String(dt.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      };
       
-      await dispatch(fetchShiftsByStore({ 
+      const startDateStr = formatDateTimeForAPI(weekStart);
+      const endDateStr = formatDateTimeForAPI(weekEndDate);
+      
+      console.log('Loading shifts for week:', {
+        weekStart: formatDate(weekStart),
+        weekEnd: formatDate(weekEndDate),
+        startDateStr,
+        endDateStr,
+        weekStartLocal: weekStart.toString(),
+        weekEndLocal: weekEndDate.toString()
+      });
+      
+      const result = await dispatch(fetchShiftsByStore({ 
         storeId: selectedStoreId,
         startDate: startDateStr,
         endDate: endDateStr
-      }));
+      })).unwrap();
+      
+      console.log('Shifts loaded:', {
+        count: result?.length || shifts.length,
+        shifts: result || shifts
+      });
     } catch (error: any) {
       console.error('Failed to load shifts:', error);
     }
@@ -228,11 +260,24 @@ const Shifts: React.FC = () => {
 
   const handleCreateShiftTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStoreId || !selectedDay || !selectedShiftType) return;
+    if (!selectedStoreId || !selectedDay || !selectedShiftType) {
+      console.error('Missing required data:', { selectedStoreId, selectedDay, selectedShiftType });
+      return;
+    }
 
     try {
       // Tính toán ngày cụ thể trong tuần đang xem
       const date = getDateForDay(selectedDay);
+      const dateStr = formatDate(date);
+      
+      console.log('=== Creating Shift ===', {
+        selectedDay,
+        selectedShiftType,
+        dayName: getDayName(selectedDay),
+        calculatedDate: dateStr,
+        weekStart: formatDate(weekStart),
+        dateObject: date.toString()
+      });
       
       // Parse thời gian từ form
       const [startHours, startMinutes] = shiftTemplateForm.startTime.split(':').map(Number);
@@ -256,26 +301,30 @@ const Shifts: React.FC = () => {
         return `${year}-${month}-${day}T${hours}:${minutes}:00`;
       };
       
-      console.log('Creating shift:', {
-        selectedDay,
-        selectedShiftType,
-        date: formatDate(date),
-        startTime: shiftTemplateForm.startTime,
-        startDatetime: formatDateTimeForAPI(startDatetime),
+      const startDatetimeStr = formatDateTimeForAPI(startDatetime);
+      const endDatetimeStr = formatDateTimeForAPI(endDatetime);
+      
+      console.log('Shift data to send:', {
+        title: shiftTemplateForm.title,
+        startDatetime: startDatetimeStr,
+        endDatetime: endDatetimeStr,
+        requiredSlots: shiftTemplateForm.requiredSlots || 1,
         startDatetimeLocal: startDatetime.toString(),
-        endDatetime: formatDateTimeForAPI(endDatetime)
+        endDatetimeLocal: endDatetime.toString()
       });
       
       // Tạo ca thực tế (không phải template) cho ngày cụ thể
-      await dispatch(createShift({
+      const result = await dispatch(createShift({
         storeId: selectedStoreId,
         data: {
           title: shiftTemplateForm.title,
-          startDatetime: formatDateTimeForAPI(startDatetime),
-          endDatetime: formatDateTimeForAPI(endDatetime),
+          startDatetime: startDatetimeStr,
+          endDatetime: endDatetimeStr,
           requiredSlots: shiftTemplateForm.requiredSlots || 1
         }
       })).unwrap();
+      
+      console.log('Shift created successfully:', result);
       
       setToast({ show: true, message: 'Tạo ca thành công!', type: 'success' });
       setShowCreateShiftModal(false);
@@ -292,8 +341,11 @@ const Shifts: React.FC = () => {
         notes: ''
       });
       // Refresh data
+      console.log('Refreshing shifts for week...');
       await loadShiftsForWeek();
+      console.log('Shifts refreshed. Current shifts:', shifts.length);
     } catch (error: any) {
+      console.error('Error creating shift:', error);
       setToast({ 
         show: true, 
         message: error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi tạo ca!', 
@@ -304,8 +356,24 @@ const Shifts: React.FC = () => {
 
   const getDateForDay = (dayOfWeek: number): Date => {
     const date = new Date(weekStart);
+    // dayOfWeek: 1=Monday, 2=Tuesday, ..., 7=Sunday
+    // weekStart is Monday, so:
+    // dayOfWeek=1 (Monday) → diff=0
+    // dayOfWeek=2 (Tuesday) → diff=1
+    // ...
+    // dayOfWeek=7 (Sunday) → diff=6
     const diff = dayOfWeek - 1;
     date.setDate(date.getDate() + diff);
+    // Debug log for Monday and Sunday
+    if (dayOfWeek === 1 || dayOfWeek === 7) {
+      console.log('getDateForDay:', {
+        dayOfWeek,
+        dayName: getDayName(dayOfWeek),
+        weekStart: formatDate(weekStart),
+        calculatedDate: formatDate(date),
+        diff
+      });
+    }
     return date;
   };
 
@@ -313,16 +381,27 @@ const Shifts: React.FC = () => {
     const date = getDateForDay(day);
     const dateStr = formatDate(date);
     
-    return shifts.filter((shift: any) => {
+    // Debug log for Monday and Sunday
+    if (day === 1 || day === 7) {
+      console.log('getShiftsForDayAndType called:', {
+        day,
+        dayName: getDayName(day),
+        shiftType,
+        expectedDate: dateStr,
+        totalShifts: shifts.length
+      });
+    }
+    
+    const filtered = shifts.filter((shift: any) => {
       // Parse shift datetime - backend returns LocalDateTime as ISO string without timezone
       // When parsing, we need to treat it as local time, not UTC
       let shiftDate: Date;
       if (shift.startDatetime.includes('T') && !shift.startDatetime.includes('Z') && !shift.startDatetime.includes('+') && !shift.startDatetime.includes('-', 10)) {
         // LocalDateTime format: "2024-12-04T08:00:00" - parse as local time
         const [datePart, timePart] = shift.startDatetime.split('T');
-        const [year, month, day] = datePart.split('-').map(Number);
+        const [year, month, dayNum] = datePart.split('-').map(Number);
         const [hours, minutes, seconds = 0] = timePart.split(':').map(Number);
-        shiftDate = new Date(year, month - 1, day, hours, minutes, seconds);
+        shiftDate = new Date(year, month - 1, dayNum, hours, minutes, seconds);
       } else {
         // Fallback to standard Date parsing
         shiftDate = new Date(shift.startDatetime);
@@ -332,8 +411,8 @@ const Shifts: React.FC = () => {
       
       // Check if shift is on this day (compare date strings)
       if (shiftDateStr !== dateStr) {
-        // Debug log for Monday morning shifts
-        if (day === 2 && shiftType === 'MORNING') {
+        // Debug log for Monday and Sunday
+        if ((day === 1 || day === 7) && (shiftType === 'MORNING' || shiftType === 'EVENING')) {
           console.log('Shift filtered out by date:', {
             shiftId: shift.id,
             shiftTitle: shift.title,
@@ -341,6 +420,7 @@ const Shifts: React.FC = () => {
             shiftDateStr,
             expectedDateStr: dateStr,
             day,
+            dayName: getDayName(day),
             shiftType
           });
         }
@@ -355,20 +435,36 @@ const Shifts: React.FC = () => {
       if (shiftType === 'AFTERNOON' && shiftHour >= 12 && shiftHour < 17) matchesType = true;
       if (shiftType === 'EVENING' && shiftHour >= 17 && shiftHour < 23) matchesType = true;
       
-      // Debug log for Monday morning shifts
-      if (day === 2 && shiftType === 'MORNING') {
+      // Debug log for Monday and Sunday
+      if ((day === 1 || day === 7) && (shiftType === 'MORNING' || shiftType === 'EVENING')) {
         console.log('Shift type check:', {
           shiftId: shift.id,
           shiftTitle: shift.title,
           shiftStartDatetime: shift.startDatetime,
           shiftHour,
           shiftType,
-          matchesType
+          matchesType,
+          shiftDateStr,
+          expectedDateStr: dateStr
         });
       }
       
       return matchesType;
     });
+    
+    // Debug log for Monday and Sunday
+    if (day === 1 || day === 7) {
+      console.log('getShiftsForDayAndType result:', {
+        day,
+        dayName: getDayName(day),
+        shiftType,
+        expectedDate: dateStr,
+        foundShifts: filtered.length,
+        shiftIds: filtered.map((s: any) => s.id)
+      });
+    }
+    
+    return filtered;
   };
 
   const getTemplatesForDayAndType = (day: number, shiftType: string): ShiftTemplate[] => {

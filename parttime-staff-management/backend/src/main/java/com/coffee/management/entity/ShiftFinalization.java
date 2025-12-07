@@ -39,3 +39,4 @@ public class ShiftFinalization {
     private LocalDateTime finalizedAt;
 }
 
+

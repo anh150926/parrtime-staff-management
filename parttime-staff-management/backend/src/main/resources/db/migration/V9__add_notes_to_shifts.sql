@@ -6,3 +6,4 @@
 ALTER TABLE shifts
     ADD COLUMN notes TEXT NULL COMMENT 'Ghi chú cho ca làm' AFTER day_of_week;
 
+
