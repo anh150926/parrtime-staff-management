@@ -311,9 +311,9 @@ const Dashboard: React.FC = () => {
         </div>
         
         {(isOwner || isManager) && (
-          <div>
+          <div className="month-selector-container">
             <select
-              className="form-select"
+              className="form-select month-selector"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
@@ -330,6 +330,7 @@ const Dashboard: React.FC = () => {
                 );
               })}
             </select>
+            <i className="bi bi-chevron-down month-selector-arrow"></i>
           </div>
         )}
       </div>
@@ -777,7 +778,7 @@ const Dashboard: React.FC = () => {
                   {confirmedShifts.slice(0, 4).map((shift) => (
                     <div key={shift.id} className="d-flex align-items-center p-3 border-bottom">
                       <div className="me-3">
-                        <div className="bg-coffee-light rounded p-2 text-white text-center" style={{width: '50px'}}>
+                        <div className="bg-primary rounded p-2 text-white text-center" style={{width: '50px', background: 'var(--blue-primary)'}}>
                           <small className="d-block">{new Date(shift.startDatetime).toLocaleDateString('vi-VN', { weekday: 'short' })}</small>
                           <strong>{new Date(shift.startDatetime).getDate()}</strong>
                         </div>
@@ -872,29 +873,51 @@ const Dashboard: React.FC = () => {
 
             {/* Personal Info */}
             <div className="col-md-6">
-              <div className="card card-coffee h-100">
-                <div className="card-header">
+              <div className="card card-coffee h-100 employee-info-card">
+                <div className="card-header employee-info-header">
                   <i className="bi bi-person-badge me-2"></i>
-                  Thông tin cá nhân
+                  Thông tin nhân viên
                 </div>
-                <div className="card-body">
-                  <table className="table table-borderless mb-0">
+                <div className="card-body employee-info-body">
+                  <div className="employee-info-avatar-section">
+                    {user?.avatarUrl ? (
+                      <img 
+                        src={user.avatarUrl} 
+                        alt={user.fullName}
+                        className="employee-info-avatar"
+                      />
+                    ) : (
+                      <div className="employee-info-avatar employee-info-avatar-placeholder">
+                        {user?.fullName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="employee-info-name-section">
+                      <h5 className="employee-info-name mb-1">{user?.fullName}</h5>
+                      <span className={`badge ${user?.role === 'OWNER' ? 'badge-owner' : user?.role === 'MANAGER' ? 'badge-manager' : 'badge-staff'}`}>
+                        {user?.role === 'OWNER' ? 'Chủ sở hữu' : user?.role === 'MANAGER' ? 'Quản lý' : 'Nhân viên'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="employee-info-divider"></div>
+                  <table className="table table-borderless mb-0 employee-info-table">
                     <tbody>
                       <tr>
-                        <td className="text-muted" width="40%">Họ tên:</td>
-                        <td><strong>{user?.fullName}</strong></td>
+                        <td className="text-muted" width="40%">
+                          <i className="bi bi-envelope me-2"></i>Email:
+                        </td>
+                        <td><strong>{user?.email}</strong></td>
                       </tr>
                       <tr>
-                        <td className="text-muted">Email:</td>
-                        <td>{user?.email}</td>
+                        <td className="text-muted">
+                          <i className="bi bi-shop me-2"></i>Cơ sở:
+                        </td>
+                        <td><strong>{user?.storeName || '---'}</strong></td>
                       </tr>
                       <tr>
-                        <td className="text-muted">Cơ sở:</td>
-                        <td>{user?.storeName}</td>
-                      </tr>
-                      <tr>
-                        <td className="text-muted">Lương/giờ:</td>
-                        <td>{user?.hourlyRate ? formatCurrency(user.hourlyRate) : '---'}</td>
+                        <td className="text-muted">
+                          <i className="bi bi-cash-coin me-2"></i>Lương/giờ:
+                        </td>
+                        <td><strong className="text-success">{user?.hourlyRate ? formatCurrency(user.hourlyRate) : '---'}</strong></td>
                       </tr>
                     </tbody>
                   </table>

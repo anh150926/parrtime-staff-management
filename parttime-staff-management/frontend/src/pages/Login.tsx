@@ -37,32 +37,32 @@ const Login: React.FC = () => {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-header">
-          <i className="bi bi-cup-hot-fill fs-1 mb-3"></i>
-          <h1>Coffee House</h1>
-          <p>Hệ thống quản lý nhân viên</p>
+        <div className="login-header-modern">
+          <i className="bi bi-cup-hot-fill login-coffee-icon"></i>
+          <h1 className="login-title">Coffee House</h1>
+          <p className="login-subtitle">Hệ thống quản lý nhân viên</p>
         </div>
 
         <div className="login-body">
           {error && (
-            <div className="alert alert-danger" role="alert">
+            <div className="alert alert-danger login-error-alert" role="alert">
               <i className="bi bi-exclamation-triangle-fill me-2"></i>
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="login-form">
             <div className="mb-3">
-              <label htmlFor="username" className="form-label">
+              <label htmlFor="username" className="login-field-label">
                 Tên đăng nhập
               </label>
-              <div className="input-group">
-                <span className="input-group-text">
+              <div className="login-input-container">
+                <div className="login-icon-section">
                   <i className="bi bi-person"></i>
-                </span>
+                </div>
                 <input
                   type="text"
-                  className="form-control"
+                  className="form-control login-input-field"
                   id="username"
                   placeholder="Nhập tên đăng nhập"
                   value={username}
@@ -74,16 +74,16 @@ const Login: React.FC = () => {
             </div>
 
             <div className="mb-4">
-              <label htmlFor="password" className="form-label">
+              <label htmlFor="password" className="login-field-label">
                 Mật khẩu
               </label>
-              <div className="input-group">
-                <span className="input-group-text">
+              <div className="login-input-container">
+                <div className="login-icon-section">
                   <i className="bi bi-lock"></i>
-                </span>
+                </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="form-control"
+                  className="form-control login-input-field"
                   id="password"
                   placeholder="Nhập mật khẩu"
                   value={password}
@@ -92,19 +92,17 @@ const Login: React.FC = () => {
                 />
                 <button
                   type="button"
-                  className="btn btn-outline-secondary"
+                  className="login-icon-section login-eye-section"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  <i
-                    className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}
-                  ></i>
+                  <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
                 </button>
               </div>
             </div>
 
             <button
               type="submit"
-              className="btn btn-coffee w-100 py-2"
+              className="btn login-signin-btn w-100"
               disabled={loading}
             >
               {loading ? (
@@ -117,26 +115,26 @@ const Login: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <i className="bi bi-box-arrow-in-right me-2"></i>
+                  <i className="bi bi-arrow-right me-2"></i>
                   Đăng nhập
                 </>
               )}
             </button>
           </form>
 
-          <hr className="my-4" />
-
-          <div className="text-center text-muted small">
-            <p className="mb-2">Tài khoản demo:</p>
-            <p className="mb-1">
-              <strong>Owner:</strong> owner / password123
-            </p>
-            <p className="mb-1">
-              <strong>Manager:</strong> managerA / password123
-            </p>
-            <p className="mb-0">
-              <strong>Staff:</strong> staff_a01 / password123
-            </p>
+          <div className="login-demo-box">
+            <div className="login-demo-title">Tài khoản demo:</div>
+            <div className="login-demo-content">
+              <div className="login-demo-item">
+                <strong>Owner:</strong> owner / password123
+              </div>
+              <div className="login-demo-item">
+                <strong>Manager:</strong> managerA / password123
+              </div>
+              <div className="login-demo-item">
+                <strong>Staff:</strong> staff_a01 / password123
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -113,11 +113,11 @@ const Layout: React.FC = () => {
             {(user?.role === "MANAGER" || user?.role === "STAFF") && (
               <div className="dropdown me-3">
                 <button
-                  className="btn btn-link text-white position-relative"
+                  className="btn btn-link notification-bell-btn position-relative"
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
                 >
-                  <i className="bi bi-bell fs-5"></i>
+                  <i className="bi bi-bell notification-bell-icon"></i>
                   {unreadCount > 0 && (
                     <span className="notification-badge">{unreadCount}</span>
                   )}
@@ -169,39 +169,31 @@ const Layout: React.FC = () => {
             {/* User Menu */}
             <div className="dropdown">
               <button
-                className="btn btn-link text-white d-flex align-items-center"
+                className="btn btn-link navbar-user-btn d-flex align-items-center"
                 data-bs-toggle="dropdown"
               >
                 {user?.avatarUrl ? (
                   <img 
                     src={user.avatarUrl} 
                     alt="Avatar"
-                    className="me-2"
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      border: '2px solid var(--coffee-accent)'
-                    }}
+                    className="navbar-user-avatar me-2"
                   />
                 ) : (
-                  <div className="avatar me-2">
+                  <div className="navbar-user-avatar avatar me-2">
                     {user?.fullName.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <span className="d-none d-md-inline">{user?.fullName}</span>
-                <i className="bi bi-chevron-down ms-2"></i>
+                <span className="navbar-user-name d-none d-md-inline">{user?.fullName}</span>
+                <i className="bi bi-chevron-down navbar-user-chevron ms-2"></i>
               </button>
-              <div className="dropdown-menu dropdown-menu-end">
-                <div className="dropdown-header">
-                  <strong>{user?.fullName}</strong>
-                  <br />
-                  <small
-                    className={`badge ${getRoleBadgeClass(user?.role || "")}`}
-                  >
-                    {getRoleLabel(user?.role || "")}
-                  </small>
+              <div className="dropdown-menu dropdown-menu-end user-dropdown-menu">
+                <div className="user-dropdown-header">
+                  <div className="user-dropdown-name">{user?.fullName}</div>
+                  <div className="user-dropdown-role">
+                    <span className={`badge ${getRoleBadgeClass(user?.role || "")}`}>
+                      {getRoleLabel(user?.role || "")}
+                    </span>
+                  </div>
                 </div>
                 <div className="dropdown-divider"></div>
                 <NavLink to="/profile" className="dropdown-item">
@@ -456,7 +448,7 @@ const Layout: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <main className="main-content" style={{ marginTop: "56px" }}>
+      <main className="main-content" style={{ marginTop: "64px" }}>
         <Outlet />
       </main>
 
