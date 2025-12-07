@@ -12,6 +12,19 @@ export interface StoreReport {
   pendingRequests: number;
   approvedRequests: number;
   rejectedRequests: number;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  pendingTasks: number;
+  inProgressTasks: number;
+  // Attendance and Punctuality
+  totalAssignedShifts: number;
+  attendedShifts: number;
+  missedShifts: number;
+  attendanceRate: number;
+  lateCheckIns: number;
+  earlyCheckOuts: number;
+  punctualityRate: number;
 }
 
 export interface SystemReport {
@@ -23,6 +36,17 @@ export interface SystemReport {
   totalHoursWorked: number;
   totalPayroll: number;
   totalPendingRequests: number;
+  totalTasks: number;
+  totalCompletedTasks: number;
+  totalOverdueTasks: number;
+  // Attendance and Punctuality (system-wide)
+  totalAssignedShifts: number;
+  totalAttendedShifts: number;
+  totalMissedShifts: number;
+  totalAttendanceRate: number;
+  totalLateCheckIns: number;
+  totalEarlyCheckOuts: number;
+  totalPunctualityRate: number;
   storeReports: StoreReport[];
 }
 

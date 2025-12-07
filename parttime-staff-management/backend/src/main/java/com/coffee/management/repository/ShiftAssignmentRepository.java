@@ -41,6 +41,18 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
             @Param("userId") Long userId,
             @Param("startDate") java.time.LocalDateTime startDate,
             @Param("endDate") java.time.LocalDateTime endDate);
+    
+    // For store report - get all assignments for a store in date range
+    @Query("SELECT sa FROM ShiftAssignment sa " +
+           "JOIN FETCH sa.shift s " +
+           "JOIN FETCH sa.user u " +
+           "WHERE s.store.id = :storeId " +
+           "AND s.startDatetime >= :startDate " +
+           "AND s.startDatetime <= :endDate")
+    List<ShiftAssignment> findByStoreIdAndDateRange(
+            @Param("storeId") Long storeId,
+            @Param("startDate") java.time.LocalDateTime startDate,
+            @Param("endDate") java.time.LocalDateTime endDate);
 }
 
 

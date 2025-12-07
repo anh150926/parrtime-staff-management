@@ -1,0 +1,337 @@
+@startuml Use Case Diagram - Hệ Thống Quản Lý Nhân Viên Quán Coffee
+
+!define OWNER_COLOR #FFE5B4
+!define MANAGER_COLOR #E5F3FF
+!define STAFF_COLOR #E5FFE5
+!define COMMON_COLOR #F0F0F0
+
+skinparam linetype ortho
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+skinparam usecase {
+    BackgroundColor<<Owner>> OWNER_COLOR
+    BackgroundColor<<Manager>> MANAGER_COLOR
+    BackgroundColor<<Staff>> STAFF_COLOR
+    BackgroundColor<<Common>> COMMON_COLOR
+    BorderColor Black
+    ArrowColor Black
+    FontSize 9
+}
+
+skinparam actor {
+    BackgroundColor #FFD700
+    BorderColor Black
+    FontSize 10
+}
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #000000
+    BorderThickness 2
+}
+
+skinparam note {
+    BackgroundColor #FFFACD
+    BorderColor Black
+    FontSize 8
+}
+
+skinparam arrow {
+    Color Black
+    Thickness 1
+}
+
+title <size:18><b>Hệ Thống Quản Lý Nhân Viên Quán Coffee</b></size>\n<size:14>Use Case Diagram - Đầy Đủ</size>
+
+left to right direction
+
+' ============================================
+' ACTORS (TÁC NHÂN)
+' ============================================
+actor "Owner\n(Chủ Sở Hữu)" as Owner
+actor "Manager\n(Quản Lý)" as Manager
+actor "Staff\n(Nhân Viên)" as Staff
+
+' ============================================
+' SYSTEM BOUNDARY
+' ============================================
+rectangle "Hệ Thống Quản Lý Nhân Viên Quán Coffee" {
+    
+    ' ============================================
+    ' USE CASES CHUNG (CHO TẤT CẢ ACTORS)
+    ' ============================================
+    package "Xác Thực" {
+        usecase "Đăng Nhập" as UC_C1 <<Common>>
+        usecase "Đăng Xuất" as UC_C2 <<Common>>
+        usecase "Xem Thông Báo" as UC_C3 <<Common>>
+    }
+    
+    ' ============================================
+    ' USE CASES CỦA OWNER
+    ' ============================================
+    package "Quản Lý Hệ Thống (Owner)" {
+        usecase "Xem Dashboard Tổng Quan" as UC_O1 <<Owner>>
+        usecase "Quản Lý Nhân Viên" as UC_O2 <<Owner>>
+        usecase "Quản Lý Cơ Sở" as UC_O3 <<Owner>>
+        usecase "Xem Lịch Làm Việc & Chợ Ca" as UC_O4 <<Owner>>
+        usecase "Xử Lý Nhiệm Vụ" as UC_O5 <<Owner>>
+        usecase "Quản Lý Yêu Cầu Xin Nghỉ Phép/Đổi Ca" as UC_O6 <<Owner>>
+        usecase "Quản Lý Bảng Lương" as UC_O7 <<Owner>>
+        usecase "Xem Báo Cáo & Thống Kê" as UC_O8 <<Owner>>
+        usecase "Xử Lý Khiếu Nại" as UC_O9 <<Owner>>
+        usecase "Gửi Thông Báo Toàn Hệ Thống" as UC_O10 <<Owner>>
+    }
+    
+    ' ============================================
+    ' USE CASES CỦA MANAGER
+    ' ============================================
+    package "Quản Lý Cơ Sở (Manager)" {
+        usecase "Xem Dashboard Cơ Sở" as UC_M1 <<Manager>>
+        usecase "Quản Lý Nhân Viên Cơ Sở" as UC_M2 <<Manager>>
+    }
+    
+    package "Quản Lý Ca Làm Việc (Manager)" {
+        usecase "Tạo Ca Mẫu" as UC_M3 <<Manager>>
+        usecase "Xem Đăng Ký Ca" as UC_M4 <<Manager>>
+        usecase "Chốt Ca" as UC_M5 <<Manager>>
+        usecase "Phân Công Nhân Viên" as UC_M6 <<Manager>>
+        usecase "Xóa Ca Mẫu" as UC_M7 <<Manager>>
+    }
+    
+    package "Duyệt & Quản Lý (Manager)" {
+        usecase "Duyệt Yêu Cầu" as UC_M8 <<Manager>>
+        usecase "Quản Lý Nhiệm Vụ" as UC_M9 <<Manager>>
+        usecase "Duyệt Giao Dịch Chợ Ca" as UC_M10 <<Manager>>
+        usecase "Tính Lương" as UC_M11 <<Manager>>
+        usecase "Chấm Công Thủ Công" as UC_M12 <<Manager>>
+        usecase "Gửi Thông Báo Cơ Sở" as UC_M13 <<Manager>>
+    }
+    
+    ' ============================================
+    ' USE CASES CỦA STAFF
+    ' ============================================
+    package "Quản Lý Cá Nhân (Staff)" {
+        usecase "Xem Dashboard Cá Nhân" as UC_S1 <<Staff>>
+        usecase "Xem Thông Tin Cá Nhân" as UC_S2 <<Staff>>
+    }
+    
+    package "Quản Lý Ca Làm Việc (Staff)" {
+        usecase "Đăng Ký Ca Mẫu" as UC_S3 <<Staff>>
+        usecase "Hủy Đăng Ký Ca" as UC_S4 <<Staff>>
+        usecase "Xem Lịch Làm Việc" as UC_S5 <<Staff>>
+        usecase "Xác Nhận Ca Được Phân Công" as UC_S6 <<Staff>>
+        usecase "Check-in Ca Làm Việc" as UC_S7 <<Staff>>
+        usecase "Check-out Ca Làm Việc" as UC_S8 <<Staff>>
+    }
+    
+    package "Yêu Cầu & Khiếu Nại (Staff)" {
+        usecase "Gửi Yêu Cầu Nghỉ/Đổi Ca" as UC_S10 <<Staff>>
+        usecase "Xem Trạng Thái Yêu Cầu" as UC_S11 <<Staff>>
+        usecase "Gửi Khiếu Nại" as UC_S12 <<Staff>>
+        usecase "Xem Trạng Thái Khiếu Nại" as UC_S13 <<Staff>>
+    }
+    
+    package "Chợ Ca - Marketplace (Staff)" {
+        usecase "Đăng Nhường Ca" as UC_S14 <<Staff>>
+        usecase "Nhận Ca Trống" as UC_S15 <<Staff>>
+        usecase "Yêu Cầu Đổi Ca" as UC_S16 <<Staff>>
+        usecase "Hủy Đăng Nhường Ca" as UC_S17 <<Staff>>
+        usecase "Xem Lịch Sử Giao Dịch Chợ Ca" as UC_S18 <<Staff>>
+    }
+    
+    package "Nhiệm Vụ & Lương (Staff)" {
+        usecase "Xem Nhiệm Vụ" as UC_S19 <<Staff>>
+        usecase "Hoàn Thành Nhiệm Vụ" as UC_S20 <<Staff>>
+        usecase "Xem Phiếu Lương" as UC_S21 <<Staff>>
+        usecase "Xem Lịch Sử Công" as UC_S22 <<Staff>>
+    }
+}
+
+' ============================================
+' QUAN HỆ GIỮA ACTORS VÀ USE CASES
+' ============================================
+
+' Owner - Use Cases
+Owner --> UC_C1
+Owner --> UC_C2
+Owner --> UC_C3
+Owner --> UC_O1
+Owner --> UC_O2
+Owner --> UC_O3
+Owner --> UC_O4
+Owner --> UC_O5
+Owner --> UC_O6
+Owner --> UC_O7
+Owner --> UC_O8
+Owner --> UC_O9
+Owner --> UC_O10
+
+' Owner kế thừa quyền Manager
+Owner --> UC_M1
+Owner --> UC_M2
+Owner --> UC_M3
+Owner --> UC_M4
+Owner --> UC_M5
+Owner --> UC_M6
+Owner --> UC_M7
+Owner --> UC_M8
+Owner --> UC_M9
+Owner --> UC_M10
+Owner --> UC_M11
+Owner --> UC_M12
+Owner --> UC_M13
+
+' Manager - Use Cases
+Manager --> UC_C1
+Manager --> UC_C2
+Manager --> UC_C3
+Manager --> UC_M1
+Manager --> UC_M2
+Manager --> UC_M3
+Manager --> UC_M4
+Manager --> UC_M5
+Manager --> UC_M6
+Manager --> UC_M7
+Manager --> UC_M8
+Manager --> UC_M9
+Manager --> UC_M10
+Manager --> UC_M11
+Manager --> UC_M12
+Manager --> UC_M13
+
+' Staff - Use Cases
+Staff --> UC_C1
+Staff --> UC_C2
+Staff --> UC_C3
+Staff --> UC_S1
+Staff --> UC_S2
+Staff --> UC_S3
+Staff --> UC_S4
+Staff --> UC_S5
+Staff --> UC_S6
+Staff --> UC_S7
+Staff --> UC_S8
+Staff --> UC_S10
+Staff --> UC_S11
+Staff --> UC_S12
+Staff --> UC_S13
+Staff --> UC_S14
+Staff --> UC_S15
+Staff --> UC_S16
+Staff --> UC_S17
+Staff --> UC_S18
+Staff --> UC_S19
+Staff --> UC_S20
+Staff --> UC_S21
+Staff --> UC_S22
+
+' ============================================
+' QUAN HỆ INCLUDE (Bắt buộc)
+' ============================================
+UC_O1 ..> UC_C1 : <<include>>
+UC_O2 ..> UC_C1 : <<include>>
+UC_O3 ..> UC_C1 : <<include>>
+UC_O4 ..> UC_C1 : <<include>>
+UC_O5 ..> UC_C1 : <<include>>
+UC_O6 ..> UC_C1 : <<include>>
+UC_O7 ..> UC_C1 : <<include>>
+UC_O8 ..> UC_C1 : <<include>>
+UC_O9 ..> UC_C1 : <<include>>
+UC_O10 ..> UC_C1 : <<include>>
+UC_M1 ..> UC_C1 : <<include>>
+UC_M2 ..> UC_C1 : <<include>>
+UC_M3 ..> UC_C1 : <<include>>
+UC_M4 ..> UC_C1 : <<include>>
+UC_M5 ..> UC_C1 : <<include>>
+UC_M6 ..> UC_C1 : <<include>>
+UC_M7 ..> UC_C1 : <<include>>
+UC_M8 ..> UC_C1 : <<include>>
+UC_M9 ..> UC_C1 : <<include>>
+UC_M10 ..> UC_C1 : <<include>>
+UC_M11 ..> UC_C1 : <<include>>
+UC_M12 ..> UC_C1 : <<include>>
+UC_M13 ..> UC_C1 : <<include>>
+UC_S1 ..> UC_C1 : <<include>>
+UC_S2 ..> UC_C1 : <<include>>
+UC_S3 ..> UC_C1 : <<include>>
+UC_S4 ..> UC_C1 : <<include>>
+UC_S5 ..> UC_C1 : <<include>>
+UC_S6 ..> UC_C1 : <<include>>
+UC_S7 ..> UC_C1 : <<include>>
+UC_S8 ..> UC_C1 : <<include>>
+UC_S10 ..> UC_C1 : <<include>>
+UC_S11 ..> UC_C1 : <<include>>
+UC_S12 ..> UC_C1 : <<include>>
+UC_S13 ..> UC_C1 : <<include>>
+UC_S14 ..> UC_C1 : <<include>>
+UC_S15 ..> UC_C1 : <<include>>
+UC_S16 ..> UC_C1 : <<include>>
+UC_S17 ..> UC_C1 : <<include>>
+UC_S18 ..> UC_C1 : <<include>>
+UC_S19 ..> UC_C1 : <<include>>
+UC_S20 ..> UC_C1 : <<include>>
+UC_S21 ..> UC_C1 : <<include>>
+UC_S22 ..> UC_C1 : <<include>>
+
+UC_M5 ..> UC_M4 : <<include>>
+UC_M6 ..> UC_M5 : <<include>>
+UC_S3 ..> UC_S5 : <<include>>
+UC_S7 ..> UC_S6 : <<include>>
+UC_S8 ..> UC_S7 : <<include>>
+UC_S14 ..> UC_S5 : <<include>>
+UC_S15 ..> UC_S5 : <<include>>
+UC_S16 ..> UC_S5 : <<include>>
+UC_M11 ..> UC_S8 : <<include>>
+UC_M10 ..> UC_S14 : <<include>>
+UC_M8 ..> UC_S10 : <<include>>
+UC_O4 ..> UC_S5 : <<include>>
+UC_O4 ..> UC_S14 : <<include>>
+UC_O5 ..> UC_S19 : <<include>>
+UC_O6 ..> UC_S10 : <<include>>
+UC_O9 ..> UC_S12 : <<include>>
+UC_M9 ..> UC_S19 : <<include>>
+UC_S20 ..> UC_S19 : <<include>>
+
+' ============================================
+' QUAN HỆ EXTEND (Tùy chọn)
+' ============================================
+UC_S4 ..> UC_S3 : <<extend>>
+UC_S17 ..> UC_S14 : <<extend>>
+UC_M12 ..> UC_S7 : <<extend>>
+UC_S22 ..> UC_S8 : <<extend>>
+UC_S21 ..> UC_M11 : <<extend>>
+UC_O7 ..> UC_M11 : <<extend>>
+UC_S18 ..> UC_S14 : <<extend>>
+UC_S18 ..> UC_S15 : <<extend>>
+UC_S18 ..> UC_S16 : <<extend>>
+UC_S11 ..> UC_S10 : <<extend>>
+UC_S13 ..> UC_S12 : <<extend>>
+
+' ============================================
+' GHI CHÚ MÔ TẢ
+' ============================================
+note right of UC_C1
+  <b>Xác Thực</b>
+  Tất cả actors phải đăng nhập
+  trước khi sử dụng hệ thống
+end note
+
+note right of UC_M5
+  <b>Quy Trình Ca Làm Việc:</b>
+  1. Tạo ca mẫu
+  2. Nhân viên đăng ký
+  3. Manager chốt ca
+  4. Phân công nhân viên
+  5. Nhân viên xác nhận
+  6. Check-in/Check-out
+end note
+
+note right of UC_S14
+  <b>Chợ Ca (Marketplace):</b>
+  - Cần Manager duyệt
+  - Không thể đổi ca đã bắt đầu
+end note
+
+@enduml

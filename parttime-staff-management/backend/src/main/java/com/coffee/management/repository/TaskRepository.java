@@ -104,6 +104,43 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             @Param("userId") Long userId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count tasks by store and date range
+     */
+    @Query("SELECT COUNT(t) FROM Task t " +
+           "WHERE t.store.id = :storeId " +
+           "AND t.createdAt >= :startDate " +
+           "AND t.createdAt <= :endDate")
+    long countByStoreAndDateRange(@Param("storeId") Long storeId, 
+                                  @Param("startDate") LocalDateTime startDate, 
+                                  @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count completed tasks by store and date range
+     */
+    @Query("SELECT COUNT(t) FROM Task t " +
+           "WHERE t.store.id = :storeId " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.completedAt >= :startDate " +
+           "AND t.completedAt <= :endDate")
+    long countCompletedByStoreAndDateRange(@Param("storeId") Long storeId, 
+                                           @Param("startDate") LocalDateTime startDate, 
+                                           @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count overdue tasks by store and date range (not completed and due date passed)
+     */
+    @Query("SELECT COUNT(t) FROM Task t " +
+           "WHERE t.store.id = :storeId " +
+           "AND t.status != 'COMPLETED' " +
+           "AND t.dueDate < :now " +
+           "AND t.createdAt >= :startDate " +
+           "AND t.createdAt <= :endDate")
+    long countOverdueByStoreAndDateRange(@Param("storeId") Long storeId, 
+                                         @Param("now") LocalDateTime now,
+                                         @Param("startDate") LocalDateTime startDate, 
+                                         @Param("endDate") LocalDateTime endDate);
 }
 
 

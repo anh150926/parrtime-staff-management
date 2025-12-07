@@ -328,6 +328,57 @@ body {
   letter-spacing: 0.5px;
 }
 
+.stat-card .stat-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  margin-top: 0.25rem;
+}
+
+.stat-card .stat-icon-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.store-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, rgba(139, 69, 19, 0.2) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #8b4513 0%, #6b3410 100%) !important;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(139, 69, 19, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.table thead th {
+  border-bottom: 2px solid rgba(139, 69, 19, 0.2);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  padding: 1rem 0.75rem;
+}
+
+.table tbody td {
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+}
+
+.table tfoot th {
+  border-top: 2px solid rgba(139, 69, 19, 0.3);
+  padding: 1rem 0.75rem;
+  font-size: 0.95rem;
+}
+
 /* Buttons */
 .btn-coffee {
   background: var(--gradient-primary);

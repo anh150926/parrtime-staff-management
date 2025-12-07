@@ -17,7 +17,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +46,12 @@ public class ReportService {
 
     @Autowired
     private RequestRepository requestRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private ShiftAssignmentRepository shiftAssignmentRepository;
 
     /**
      * Generate report for a specific store
@@ -78,6 +86,27 @@ public class ReportService {
         int approvedRequests = (int) storeRequests.stream().filter(r -> r.getStatus() == RequestStatus.APPROVED).count();
         int rejectedRequests = (int) storeRequests.stream().filter(r -> r.getStatus() == RequestStatus.REJECTED).count();
 
+        // Task statistics - count tasks created in the month
+        long totalTasks = taskRepository.countByStoreAndDateRange(storeId, startDate, endDate);
+        long completedTasks = taskRepository.countCompletedByStoreAndDateRange(storeId, startDate, endDate);
+        long overdueTasks = taskRepository.countOverdueByStoreAndDateRange(storeId, LocalDateTime.now(), startDate, endDate);
+        
+        // Count by status - tasks created in the month
+        List<com.coffee.management.entity.Task> tasks = taskRepository.findByStoreIdOrderByDueDateAsc(storeId);
+        long pendingTasks = tasks.stream()
+                .filter(t -> t.getStatus() == com.coffee.management.entity.TaskStatus.PENDING 
+                        && !t.getCreatedAt().isBefore(startDate) 
+                        && !t.getCreatedAt().isAfter(endDate))
+                .count();
+        long inProgressTasks = tasks.stream()
+                .filter(t -> t.getStatus() == com.coffee.management.entity.TaskStatus.IN_PROGRESS 
+                        && !t.getCreatedAt().isBefore(startDate) 
+                        && !t.getCreatedAt().isAfter(endDate))
+                .count();
+
+        // Calculate attendance and punctuality metrics
+        AttendanceMetrics attendanceMetrics = calculateAttendanceMetrics(storeId, startDate, endDate);
+
         return StoreReportResponse.builder()
                 .storeId(storeId)
                 .storeName(store.getName())
@@ -89,6 +118,18 @@ public class ReportService {
                 .pendingRequests(pendingRequests)
                 .approvedRequests(approvedRequests)
                 .rejectedRequests(rejectedRequests)
+                .totalTasks(totalTasks)
+                .completedTasks(completedTasks)
+                .overdueTasks(overdueTasks)
+                .pendingTasks(pendingTasks)
+                .inProgressTasks(inProgressTasks)
+                .totalAssignedShifts(attendanceMetrics.totalAssignedShifts)
+                .attendedShifts(attendanceMetrics.attendedShifts)
+                .missedShifts(attendanceMetrics.missedShifts)
+                .attendanceRate(attendanceMetrics.attendanceRate)
+                .lateCheckIns(attendanceMetrics.lateCheckIns)
+                .earlyCheckOuts(attendanceMetrics.earlyCheckOuts)
+                .punctualityRate(attendanceMetrics.punctualityRate)
                 .build();
     }
 
@@ -126,11 +167,47 @@ public class ReportService {
                 .filter(report -> report != null)
                 .collect(Collectors.toList());
 
+        long totalTasks = 0;
+        long totalCompletedTasks = 0;
+        long totalOverdueTasks = 0;
+        
+        // Attendance and punctuality totals
+        long totalAssignedShifts = 0;
+        long totalAttendedShifts = 0;
+        long totalMissedShifts = 0;
+        long totalLateCheckIns = 0;
+        long totalEarlyCheckOuts = 0;
+
         for (StoreReportResponse report : storeReports) {
             totalShifts += report.getTotalShifts();
             totalHoursWorked = totalHoursWorked.add(report.getTotalHoursWorked());
             totalPayroll = totalPayroll.add(report.getTotalPayroll());
+            totalTasks += report.getTotalTasks();
+            totalCompletedTasks += report.getCompletedTasks();
+            totalOverdueTasks += report.getOverdueTasks();
+            
+            // Sum attendance metrics
+            totalAssignedShifts += report.getTotalAssignedShifts();
+            totalAttendedShifts += report.getAttendedShifts();
+            totalMissedShifts += report.getMissedShifts();
+            totalLateCheckIns += report.getLateCheckIns();
+            totalEarlyCheckOuts += report.getEarlyCheckOuts();
         }
+
+        // Calculate system-wide rates
+        BigDecimal totalAttendanceRate = totalAssignedShifts > 0
+                ? BigDecimal.valueOf(totalAttendedShifts)
+                        .divide(BigDecimal.valueOf(totalAssignedShifts), 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        BigDecimal totalPunctualityRate = totalAttendedShifts > 0
+                ? BigDecimal.valueOf(totalAttendedShifts - totalLateCheckIns - totalEarlyCheckOuts)
+                        .divide(BigDecimal.valueOf(totalAttendedShifts), 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
 
         int totalPendingRequests = (int) requestRepository.countPendingRequests();
 
@@ -143,6 +220,16 @@ public class ReportService {
                 .totalHoursWorked(totalHoursWorked)
                 .totalPayroll(totalPayroll)
                 .totalPendingRequests(totalPendingRequests)
+                .totalTasks(totalTasks)
+                .totalCompletedTasks(totalCompletedTasks)
+                .totalOverdueTasks(totalOverdueTasks)
+                .totalAssignedShifts(totalAssignedShifts)
+                .totalAttendedShifts(totalAttendedShifts)
+                .totalMissedShifts(totalMissedShifts)
+                .totalAttendanceRate(totalAttendanceRate)
+                .totalLateCheckIns(totalLateCheckIns)
+                .totalEarlyCheckOuts(totalEarlyCheckOuts)
+                .totalPunctualityRate(totalPunctualityRate)
                 .storeReports(storeReports)
                 .build();
     }
@@ -167,6 +254,27 @@ public class ReportService {
         int approvedRequests = (int) storeRequests.stream().filter(r -> r.getStatus() == RequestStatus.APPROVED).count();
         int rejectedRequests = (int) storeRequests.stream().filter(r -> r.getStatus() == RequestStatus.REJECTED).count();
 
+        // Task statistics - count tasks created in the month
+        long totalTasks = taskRepository.countByStoreAndDateRange(storeId, startDate, endDate);
+        long completedTasks = taskRepository.countCompletedByStoreAndDateRange(storeId, startDate, endDate);
+        long overdueTasks = taskRepository.countOverdueByStoreAndDateRange(storeId, LocalDateTime.now(), startDate, endDate);
+        
+        // Count by status - tasks created in the month
+        List<com.coffee.management.entity.Task> tasks = taskRepository.findByStoreIdOrderByDueDateAsc(storeId);
+        long pendingTasks = tasks.stream()
+                .filter(t -> t.getStatus() == com.coffee.management.entity.TaskStatus.PENDING 
+                        && !t.getCreatedAt().isBefore(startDate) 
+                        && !t.getCreatedAt().isAfter(endDate))
+                .count();
+        long inProgressTasks = tasks.stream()
+                .filter(t -> t.getStatus() == com.coffee.management.entity.TaskStatus.IN_PROGRESS 
+                        && !t.getCreatedAt().isBefore(startDate) 
+                        && !t.getCreatedAt().isAfter(endDate))
+                .count();
+
+        // Calculate attendance and punctuality metrics
+        AttendanceMetrics attendanceMetrics = calculateAttendanceMetrics(storeId, startDate, endDate);
+
         return StoreReportResponse.builder()
                 .storeId(storeId)
                 .storeName(store.getName())
@@ -178,7 +286,124 @@ public class ReportService {
                 .pendingRequests(pendingRequests)
                 .approvedRequests(approvedRequests)
                 .rejectedRequests(rejectedRequests)
+                .totalTasks(totalTasks)
+                .completedTasks(completedTasks)
+                .overdueTasks(overdueTasks)
+                .pendingTasks(pendingTasks)
+                .inProgressTasks(inProgressTasks)
+                .totalAssignedShifts(attendanceMetrics.totalAssignedShifts)
+                .attendedShifts(attendanceMetrics.attendedShifts)
+                .missedShifts(attendanceMetrics.missedShifts)
+                .attendanceRate(attendanceMetrics.attendanceRate)
+                .lateCheckIns(attendanceMetrics.lateCheckIns)
+                .earlyCheckOuts(attendanceMetrics.earlyCheckOuts)
+                .punctualityRate(attendanceMetrics.punctualityRate)
                 .build();
+    }
+
+    /**
+     * Calculate attendance and punctuality metrics for a store
+     */
+    private AttendanceMetrics calculateAttendanceMetrics(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
+        // Get all shift assignments for the store in the date range
+        List<com.coffee.management.entity.ShiftAssignment> assignments = 
+                shiftAssignmentRepository.findByStoreIdAndDateRange(storeId, startDate, endDate);
+        
+        long totalAssignedShifts = assignments.size();
+        long attendedShifts = 0;
+        long missedShifts = 0;
+        long lateCheckIns = 0;
+        long earlyCheckOuts = 0;
+
+        // Get all time logs for the store in the date range
+        List<com.coffee.management.entity.TimeLog> timeLogs = 
+                timeLogRepository.findByStoreAndDateRange(storeId, startDate, endDate);
+
+        // Create a map of shift ID to time log for quick lookup
+        Map<Long, com.coffee.management.entity.TimeLog> timeLogByShift = timeLogs.stream()
+                .filter(tl -> tl.getShift() != null)
+                .collect(Collectors.toMap(
+                        tl -> tl.getShift().getId(),
+                        tl -> tl,
+                        (existing, replacement) -> existing
+                ));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // Process each assignment
+        for (com.coffee.management.entity.ShiftAssignment assignment : assignments) {
+            com.coffee.management.entity.Shift shift = assignment.getShift();
+            com.coffee.management.entity.TimeLog timeLog = timeLogByShift.get(shift.getId());
+
+            if (timeLog != null && timeLog.getCheckIn() != null) {
+                // Employee attended this shift
+                attendedShifts++;
+
+                // Check for late check-in (> 15 minutes after shift start)
+                if (timeLog.getCheckIn().isAfter(shift.getStartDatetime().plusMinutes(15))) {
+                    lateCheckIns++;
+                }
+
+                // Check for early check-out (> 15 minutes before shift end)
+                if (timeLog.getCheckOut() != null && 
+                    timeLog.getCheckOut().isBefore(shift.getEndDatetime().minusMinutes(15))) {
+                    earlyCheckOuts++;
+                }
+            } else if (shift.getEndDatetime().isBefore(now)) {
+                // Shift has passed without attendance
+                missedShifts++;
+            }
+        }
+
+        // Calculate rates
+        BigDecimal attendanceRate = totalAssignedShifts > 0
+                ? BigDecimal.valueOf(attendedShifts)
+                        .divide(BigDecimal.valueOf(totalAssignedShifts), 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        BigDecimal punctualityRate = attendedShifts > 0
+                ? BigDecimal.valueOf(attendedShifts - lateCheckIns - earlyCheckOuts)
+                        .divide(BigDecimal.valueOf(attendedShifts), 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return new AttendanceMetrics(
+                totalAssignedShifts,
+                attendedShifts,
+                missedShifts,
+                attendanceRate,
+                lateCheckIns,
+                earlyCheckOuts,
+                punctualityRate
+        );
+    }
+
+    /**
+     * Helper class to hold attendance metrics
+     */
+    private static class AttendanceMetrics {
+        final long totalAssignedShifts;
+        final long attendedShifts;
+        final long missedShifts;
+        final BigDecimal attendanceRate;
+        final long lateCheckIns;
+        final long earlyCheckOuts;
+        final BigDecimal punctualityRate;
+
+        AttendanceMetrics(long totalAssignedShifts, long attendedShifts, long missedShifts,
+                         BigDecimal attendanceRate, long lateCheckIns, long earlyCheckOuts,
+                         BigDecimal punctualityRate) {
+            this.totalAssignedShifts = totalAssignedShifts;
+            this.attendedShifts = attendedShifts;
+            this.missedShifts = missedShifts;
+            this.attendanceRate = attendanceRate;
+            this.lateCheckIns = lateCheckIns;
+            this.earlyCheckOuts = earlyCheckOuts;
+            this.punctualityRate = punctualityRate;
+        }
     }
 }
 
