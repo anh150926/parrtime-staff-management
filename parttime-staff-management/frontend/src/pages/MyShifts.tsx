@@ -217,8 +217,8 @@ const MyShifts: React.FC<MyShiftsProps> = ({ hideHeader = false }) => {
   const getShiftTypeFromTime = (startTime: string): string => {
     const hour = new Date(startTime).getHours();
     if (hour < 12) return 'MORNING';
-    if (hour < 18) return 'AFTERNOON';
-    return 'EVENING';
+    if (hour < 17) return 'AFTERNOON'; // Ca chiều: 12:00 - 16:59
+    return 'EVENING'; // Ca tối: từ 17:00 trở đi
   };
 
   const weekDays = [1, 2, 3, 4, 5, 6, 7]; // Monday to Sunday

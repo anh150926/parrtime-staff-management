@@ -98,7 +98,7 @@ const Layout: React.FC = () => {
       <nav className="navbar navbar-expand-lg navbar-coffee fixed-top">
         <div className="container-fluid">
           <button
-            className="btn btn-link text-white d-lg-none me-2"
+            className="btn btn-link d-lg-none me-2"
             onClick={toggleSidebar}
           >
             <i className="bi bi-list fs-4"></i>
@@ -113,7 +113,7 @@ const Layout: React.FC = () => {
             {(user?.role === "MANAGER" || user?.role === "STAFF") && (
               <div className="dropdown me-3">
                 <button
-                  className="btn btn-link text-white position-relative"
+                  className="btn btn-link position-relative"
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
                 >
@@ -169,7 +169,7 @@ const Layout: React.FC = () => {
             {/* User Menu */}
             <div className="dropdown">
               <button
-                className="btn btn-link text-white d-flex align-items-center"
+                className="btn btn-link d-flex align-items-center"
                 data-bs-toggle="dropdown"
               >
                 {user?.avatarUrl ? (

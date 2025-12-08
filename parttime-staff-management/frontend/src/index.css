@@ -94,6 +94,38 @@ body {
   color: var(--orange-primary) !important;
 }
 
+/* Navbar buttons - Fix for white navbar */
+.navbar-coffee .btn-link {
+  color: var(--text-primary) !important;
+  text-decoration: none;
+  padding: 0.5rem;
+  border: none;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.navbar-coffee .btn-link:hover {
+  color: var(--orange-primary) !important;
+  background: var(--orange-light);
+  border-radius: 8px;
+}
+
+.navbar-coffee .btn-link.text-white {
+  color: var(--text-primary) !important;
+}
+
+.navbar-coffee .btn-link.text-white:hover {
+  color: var(--orange-primary) !important;
+}
+
+.navbar-coffee .dropdown .btn-link {
+  color: var(--text-primary) !important;
+}
+
+.navbar-coffee .dropdown .btn-link:hover {
+  color: var(--orange-primary) !important;
+}
+
 /* Sidebar - Modern White Design */
 .sidebar {
   background: var(--bg-white);
@@ -460,8 +492,8 @@ body {
 }
 
 .btn-outline-coffee {
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border: 1px solid var(--orange-primary);
+  color: var(--orange-primary);
   background: var(--bg-white);
   padding: 0.625rem 1.5rem;
   border-radius: 8px;
@@ -471,11 +503,19 @@ body {
 }
 
 .btn-outline-coffee:hover {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  border-color: var(--border-color);
+  background: var(--orange-primary);
+  color: white;
+  border-color: var(--orange-primary);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
+}
+
+.btn-outline-coffee:focus,
+.btn-outline-coffee:active {
+  background: var(--orange-primary);
+  color: white;
+  border-color: var(--orange-primary);
+  box-shadow: 0 0 0 3px rgba(253, 126, 20, 0.2);
 }
 
 /* Tables */
@@ -931,17 +971,21 @@ body {
 .avatar {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   border-radius: 50%;
   background: linear-gradient(
     135deg,
     var(--coffee-light) 0%,
     var(--coffee-medium) 100%
   );
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .avatar-lg {

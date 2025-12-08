@@ -241,7 +241,7 @@ const Profile: React.FC = () => {
               {/* Avatar action buttons */}
               <div className="mb-3">
                 <button 
-                  className="btn btn-sm btn-outline-light me-2"
+                  className="btn btn-sm btn-outline-coffee me-2"
                   onClick={handleAvatarClick}
                   disabled={uploadingAvatar}
                 >
@@ -289,7 +289,7 @@ const Profile: React.FC = () => {
                 Thông tin cá nhân
               </span>
               {!editing && (
-                <button className="btn btn-sm btn-outline-light" onClick={() => setEditing(true)}>
+                <button className="btn btn-sm btn-outline-coffee" onClick={() => setEditing(true)}>
                   <i className="bi bi-pencil me-1"></i>
                   Chỉnh sửa
                 </button>
