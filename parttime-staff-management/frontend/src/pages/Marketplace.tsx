@@ -259,18 +259,21 @@ const Marketplace: React.FC<MarketplaceProps> = ({ hideHeader = false }) => {
                 <label className="form-label mb-0">Chọn cơ sở:</label>
               </div>
               <div className="col-md-4">
-                <select
-                  className="form-select"
-                  value={selectedStoreId || ''}
-                  onChange={(e) => setSelectedStoreId(Number(e.target.value))}
-                  disabled={isManager}
-                >
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="position-relative">
+                  <select
+                    className="form-select"
+                    value={selectedStoreId || ''}
+                    onChange={(e) => setSelectedStoreId(Number(e.target.value))}
+                    disabled={isManager}
+                  >
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                </div>
               </div>
             </div>
           </div>

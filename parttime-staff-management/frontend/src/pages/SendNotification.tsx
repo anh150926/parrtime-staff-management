@@ -150,18 +150,21 @@ const SendNotification: React.FC = () => {
                       <i className="bi bi-shop me-1"></i>
                       Gửi đến cơ sở
                     </label>
-                    <select
-                      className="form-select"
-                      value={sendData.storeId || ''}
-                      onChange={(e) => setSendData({ ...sendData, storeId: e.target.value ? Number(e.target.value) : undefined })}
-                    >
-                      <option value="">Tất cả cơ sở</option>
-                      {stores.map((store) => (
-                        <option key={store.id} value={store.id}>
-                          {store.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="position-relative">
+                      <select
+                        className="form-select"
+                        value={sendData.storeId || ''}
+                        onChange={(e) => setSendData({ ...sendData, storeId: e.target.value ? Number(e.target.value) : undefined })}
+                      >
+                        <option value="">Tất cả cơ sở</option>
+                        {stores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                      </select>
+                      <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                    </div>
                   </div>
 
                   <div className="col-md-6">
@@ -169,15 +172,18 @@ const SendNotification: React.FC = () => {
                       <i className="bi bi-people me-1"></i>
                       Đối tượng
                     </label>
-                    <select
-                      className="form-select"
-                      value={sendData.targetRole}
-                      onChange={(e) => setSendData({ ...sendData, targetRole: e.target.value })}
-                    >
-                      <option value="">Tất cả</option>
-                      <option value="STAFF">Chỉ nhân viên</option>
-                      <option value="MANAGER">Chỉ quản lý</option>
-                    </select>
+                    <div className="position-relative">
+                      <select
+                        className="form-select"
+                        value={sendData.targetRole}
+                        onChange={(e) => setSendData({ ...sendData, targetRole: e.target.value })}
+                      >
+                        <option value="">Tất cả</option>
+                        <option value="STAFF">Chỉ nhân viên</option>
+                        <option value="MANAGER">Chỉ quản lý</option>
+                      </select>
+                      <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                    </div>
                   </div>
 
                   <div className="col-12">

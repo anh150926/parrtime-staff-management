@@ -246,16 +246,19 @@ const Payrolls: React.FC = () => {
                 <label className="form-label fw-semibold">
                   <i className="bi bi-shop me-2"></i>Cơ sở
                 </label>
-                <select 
-                  className="form-select" 
-                  value={selectedStoreId} 
-                  onChange={(e) => setSelectedStoreId(e.target.value ? Number(e.target.value) : '')}
-                >
-                  <option value="">Tất cả cơ sở</option>
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>{store.name}</option>
-                  ))}
-                </select>
+                <div className="position-relative">
+                  <select 
+                    className="form-select" 
+                    value={selectedStoreId} 
+                    onChange={(e) => setSelectedStoreId(e.target.value ? Number(e.target.value) : '')}
+                  >
+                    <option value="">Tất cả cơ sở</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>{store.name}</option>
+                    ))}
+                  </select>
+                  <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                </div>
               </div>
             )}
             <div className="col-md-auto">

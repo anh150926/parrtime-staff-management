@@ -810,18 +810,21 @@ const Shifts: React.FC = () => {
               <label className="form-label mb-0">Chọn cơ sở:</label>
             </div>
             <div className="col-md-4">
-              <select
-                className="form-select"
-                value={selectedStoreId || ''}
-                onChange={(e) => setSelectedStoreId(Number(e.target.value))}
-                disabled={currentUser?.role === 'MANAGER'}
-              >
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
+              <div className="position-relative">
+                <select
+                  className="form-select"
+                  value={selectedStoreId || ''}
+                  onChange={(e) => setSelectedStoreId(Number(e.target.value))}
+                  disabled={currentUser?.role === 'MANAGER'}
+                >
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+                <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+              </div>
             </div>
           </div>
         </div>
@@ -914,6 +917,8 @@ const Shifts: React.FC = () => {
                             {dayShifts.map((shift: any) => {
                               const assignedCount = shift.assignments?.length || 0;
                               const requiredSlots = shift.requiredSlots || 1;
+                              const confirmedCount = shift.assignments?.filter((a: any) => a.status === 'CONFIRMED').length || 0;
+                              const isAssigned = confirmedCount > 0;
                               
                               return (
                                 <div key={shift.id} className="mb-2 p-2 border rounded bg-light">
@@ -924,6 +929,11 @@ const Shifts: React.FC = () => {
                                   <div className="small mb-1">
                                     <span className={`badge ${assignedCount >= requiredSlots ? 'bg-success' : assignedCount > 0 ? 'bg-warning' : 'bg-secondary'}`}>
                                       {assignedCount}/{requiredSlots} người
+                                    </span>
+                                  </div>
+                                  <div className="small mb-1">
+                                    <span className={`badge ${isAssigned ? 'bg-success' : 'bg-secondary'}`}>
+                                      {isAssigned ? 'Đã phân công' : 'Chưa phân công'}
                                     </span>
                                   </div>
                                   <div className="d-flex gap-1 mt-1">

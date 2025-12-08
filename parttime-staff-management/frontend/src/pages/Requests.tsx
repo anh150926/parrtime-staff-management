@@ -99,12 +99,15 @@ const Requests: React.FC = () => {
               <label className="form-label mb-0">Lọc theo trạng thái:</label>
             </div>
             <div className="col-md-3">
-              <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                <option value="">Tất cả</option>
-                <option value="PENDING">Chờ duyệt</option>
-                <option value="APPROVED">Đã duyệt</option>
-                <option value="REJECTED">Từ chối</option>
-              </select>
+              <div className="position-relative">
+                <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="">Tất cả</option>
+                  <option value="PENDING">Chờ duyệt</option>
+                  <option value="APPROVED">Đã duyệt</option>
+                  <option value="REJECTED">Từ chối</option>
+                </select>
+                <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+              </div>
             </div>
           </div>
         </div>

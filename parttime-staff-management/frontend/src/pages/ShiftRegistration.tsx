@@ -362,14 +362,15 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
                                     <span className="badge bg-info">
                                       Cần {requiredSlots} người
                                     </span>
-                                    {registeredCount > 0 && (
+                                    {registeredCount > 0 && !assignment && (
                                       <span className="badge bg-secondary ms-1">
                                         {registeredCount} người đã đăng ký
                                       </span>
                                     )}
                                   </div>
                                   {(() => {
-                                    if (registered && assignment) {
+                                    // Check if user has an assignment for this shift (most reliable indicator)
+                                    if (assignment) {
                                       const status = assignment.status;
                                       if (status === 'CONFIRMED') {
                                         return (
@@ -386,10 +387,11 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
                                           </span>
                                         );
                                       } else {
+                                        // ASSIGNED status - pending approval
                                         return (
                                           <span className="badge bg-warning">
                                             <i className="bi bi-clock me-1"></i>
-                                            Chờ xác nhận
+                                            Đang chờ duyệt
                                           </span>
                                         );
                                       }

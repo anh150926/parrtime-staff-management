@@ -278,18 +278,21 @@ const CreateTaskForStaff: React.FC = () => {
               <form onSubmit={handleCreateTask}>
                 <div className="mb-3">
                   <label className="form-label">Cơ sở *</label>
-                  <select
-                    className="form-select"
-                    value={selectedStoreId || ""}
-                    onChange={(e) => handleStoreChange(Number(e.target.value))}
-                    disabled={stores.length <= 1}
-                  >
-                    {stores.map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="position-relative">
+                    <select
+                      className="form-select"
+                      value={selectedStoreId || ""}
+                      onChange={(e) => handleStoreChange(Number(e.target.value))}
+                      disabled={stores.length <= 1}
+                    >
+                      {stores.map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
+                      ))}
+                    </select>
+                    <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                  </div>
                 </div>
 
                 <div className="mb-3">
@@ -326,27 +329,30 @@ const CreateTaskForStaff: React.FC = () => {
                   <label className="form-label">
                     {isOwner ? "Giao cho quản lý *" : "Giao cho nhân viên *"}
                   </label>
-                  <select
-                    className="form-select"
-                    value={formData.assignedToId || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        assignedToId: e.target.value
-                          ? Number(e.target.value)
-                          : undefined,
-                      })
-                    }
-                  >
-                    <option value="">
-                      {isOwner ? "-- Chọn quản lý --" : "-- Chọn nhân viên --"}
-                    </option>
-                    {staffList.map((staff) => (
-                      <option key={staff.id} value={staff.id}>
-                        {staff.fullName}
+                  <div className="position-relative">
+                    <select
+                      className="form-select"
+                      value={formData.assignedToId || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          assignedToId: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                    >
+                      <option value="">
+                        {isOwner ? "-- Chọn quản lý --" : "-- Chọn nhân viên --"}
                       </option>
-                    ))}
-                  </select>
+                      {staffList.map((staff) => (
+                        <option key={staff.id} value={staff.id}>
+                          {staff.fullName}
+                        </option>
+                      ))}
+                    </select>
+                    <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                  </div>
                   {staffList.length === 0 && (
                     <small className="text-warning">
                       {isOwner
@@ -359,21 +365,24 @@ const CreateTaskForStaff: React.FC = () => {
                 <div className="row">
                   <div className="col-md-12 mb-3">
                     <label className="form-label">Độ ưu tiên *</label>
-                    <select
-                      className="form-select"
-                      value={formData.priority}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          priority: e.target.value as TaskPriority,
-                        })
-                      }
-                    >
-                      <option value="LOW">Thấp</option>
-                      <option value="MEDIUM">Trung bình</option>
-                      <option value="HIGH">Cao</option>
-                      <option value="URGENT">Khẩn cấp</option>
-                    </select>
+                    <div className="position-relative">
+                      <select
+                        className="form-select"
+                        value={formData.priority}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            priority: e.target.value as TaskPriority,
+                          })
+                        }
+                      >
+                        <option value="LOW">Thấp</option>
+                        <option value="MEDIUM">Trung bình</option>
+                        <option value="HIGH">Cao</option>
+                        <option value="URGENT">Khẩn cấp</option>
+                      </select>
+                      <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                    </div>
                   </div>
                 </div>
 
@@ -437,17 +446,19 @@ const CreateTaskForStaff: React.FC = () => {
                   <i className="bi bi-list-check me-2"></i>
                   Danh sách nhiệm vụ ({filteredTasks.length})
                 </h5>
-                <select
-                  className="form-select form-select-sm"
-                  style={{ width: "150px" }}
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="">Tất cả trạng thái</option>
-                  <option value="PENDING">Chờ xử lý</option>
-                  <option value="IN_PROGRESS">Đang làm</option>
-                  <option value="COMPLETED">Hoàn thành</option>
-                </select>
+                <div className="position-relative" style={{ width: "150px" }}>
+                  <select
+                    className="form-select form-select-sm"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="PENDING">Chờ xử lý</option>
+                    <option value="IN_PROGRESS">Đang làm</option>
+                    <option value="COMPLETED">Hoàn thành</option>
+                  </select>
+                  <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-2" style={{ pointerEvents: 'none', zIndex: 10, fontSize: '0.875rem' }}></i>
+                </div>
               </div>
             </div>
             <div className="card-body p-0">

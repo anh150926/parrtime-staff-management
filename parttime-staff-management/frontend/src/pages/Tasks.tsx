@@ -343,46 +343,55 @@ const Tasks: React.FC = () => {
             {!isStaff && (
               <div className="col-md-3">
                 <label className="form-label mb-1 small">Cơ sở</label>
-                <select
-                  className="form-select"
-                  value={selectedStoreId || ""}
-                  onChange={(e) => setSelectedStoreId(Number(e.target.value))}
-                  disabled={isManager}
-                >
-                  {stores.map((store) => (
-                    <option key={store.id} value={store.id}>
-                      {store.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="position-relative">
+                  <select
+                    className="form-select"
+                    value={selectedStoreId || ""}
+                    onChange={(e) => setSelectedStoreId(Number(e.target.value))}
+                    disabled={isManager}
+                  >
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </select>
+                  <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                </div>
               </div>
             )}
             <div className="col-md-3">
               <label className="form-label mb-1 small">Trạng thái</label>
-              <select
-                className="form-select"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="">Tất cả</option>
-                <option value="PENDING">Chờ xử lý</option>
-                <option value="IN_PROGRESS">Đang làm</option>
-                <option value="COMPLETED">Hoàn thành</option>
-              </select>
+              <div className="position-relative">
+                <select
+                  className="form-select"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option value="">Tất cả</option>
+                  <option value="PENDING">Chờ xử lý</option>
+                  <option value="IN_PROGRESS">Đang làm</option>
+                  <option value="COMPLETED">Hoàn thành</option>
+                </select>
+                <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+              </div>
             </div>
             <div className="col-md-3">
               <label className="form-label mb-1 small">Độ ưu tiên</label>
-              <select
-                className="form-select"
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-              >
-                <option value="">Tất cả</option>
-                <option value="URGENT">Khẩn cấp</option>
-                <option value="HIGH">Cao</option>
-                <option value="MEDIUM">Trung bình</option>
-                <option value="LOW">Thấp</option>
-              </select>
+              <div className="position-relative">
+                <select
+                  className="form-select"
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value)}
+                >
+                  <option value="">Tất cả</option>
+                  <option value="URGENT">Khẩn cấp</option>
+                  <option value="HIGH">Cao</option>
+                  <option value="MEDIUM">Trung bình</option>
+                  <option value="LOW">Thấp</option>
+                </select>
+                <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+              </div>
             </div>
           </div>
         </div>
@@ -713,21 +722,24 @@ const Tasks: React.FC = () => {
                     <div className="row">
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Độ ưu tiên</label>
-                        <select
-                          className="form-select"
-                          value={editFormData.priority}
-                          onChange={(e) =>
-                            setEditFormData({
-                              ...editFormData,
-                              priority: e.target.value as TaskPriority,
-                            })
-                          }
-                        >
-                          <option value="LOW">Thấp</option>
-                          <option value="MEDIUM">Trung bình</option>
-                          <option value="HIGH">Cao</option>
-                          <option value="URGENT">Khẩn cấp</option>
-                        </select>
+                        <div className="position-relative">
+                          <select
+                            className="form-select"
+                            value={editFormData.priority}
+                            onChange={(e) =>
+                              setEditFormData({
+                                ...editFormData,
+                                priority: e.target.value as TaskPriority,
+                              })
+                            }
+                          >
+                            <option value="LOW">Thấp</option>
+                            <option value="MEDIUM">Trung bình</option>
+                            <option value="HIGH">Cao</option>
+                            <option value="URGENT">Khẩn cấp</option>
+                          </select>
+                          <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                        </div>
                       </div>
                       <div className="col-md-6 mb-3">
                         <label className="form-label">Hạn hoàn thành</label>
@@ -743,23 +755,26 @@ const Tasks: React.FC = () => {
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Giao cho</label>
-                      <select
-                        className="form-select"
-                        value={editFormData.assignedToId || ""}
-                        onChange={(e) =>
-                          setEditFormData({
-                            ...editFormData,
-                            assignedToId: e.target.value ? Number(e.target.value) : undefined,
-                          })
-                        }
-                      >
-                        <option value="">Tất cả nhân viên</option>
-                        {storeStaff.map((staff) => (
-                          <option key={staff.id} value={staff.id}>
-                            {staff.fullName}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="position-relative">
+                        <select
+                          className="form-select"
+                          value={editFormData.assignedToId || ""}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              assignedToId: e.target.value ? Number(e.target.value) : undefined,
+                            })
+                          }
+                        >
+                          <option value="">Tất cả nhân viên</option>
+                          {storeStaff.map((staff) => (
+                            <option key={staff.id} value={staff.id}>
+                              {staff.fullName}
+                            </option>
+                          ))}
+                        </select>
+                        <i className="bi bi-chevron-down position-absolute top-50 end-0 translate-middle-y me-3" style={{ pointerEvents: 'none', zIndex: 10 }}></i>
+                      </div>
                     </div>
                     <div className="mb-3">
                       <label className="form-label">Ghi chú</label>
