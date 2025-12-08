@@ -65,8 +65,42 @@ public class EmployeeRankingService {
             rankings.add(ranking);
         }
 
-        // Sort by performance score (descending)
-        rankings.sort((a, b) -> Double.compare(b.getPerformanceScore(), a.getPerformanceScore()));
+        // Sort by performance score (descending), with tie-breakers:
+        // 1. Performance score (highest first)
+        // 2. Attendance rate (highest first)
+        // 3. If attendance rate is equal and both are 0%: prefer employee with fewer total shifts assigned
+        // 4. Punctuality rate (highest first)
+        // 5. Total hours worked (highest first)
+        // 6. Full name (alphabetical)
+        rankings.sort((a, b) -> {
+            // First: Compare by performance score
+            int scoreCompare = Double.compare(b.getPerformanceScore(), a.getPerformanceScore());
+            if (scoreCompare != 0) return scoreCompare;
+            
+            // Second: Compare by attendance rate
+            int attendanceCompare = Double.compare(b.getAttendanceRate(), a.getAttendanceRate());
+            if (attendanceCompare != 0) return attendanceCompare;
+            
+            // Third: If both have same attendance rate (especially 0%),
+            // prefer employee with fewer total shifts assigned (less opportunity = better ranking)
+            // This handles cases like 0/1 vs 0/5 - the one with 1 shift should rank higher
+            // When attendance rates are equal and low (especially 0%), fewer assigned shifts = better
+            if (a.getAttendanceRate() < 1.0 && b.getAttendanceRate() < 1.0) {
+                int shiftsCompare = Integer.compare(a.getTotalShifts(), b.getTotalShifts());
+                if (shiftsCompare != 0) return shiftsCompare;
+            }
+            
+            // Fourth: Compare by punctuality rate
+            int punctualityCompare = Double.compare(b.getPunctualityRate(), a.getPunctualityRate());
+            if (punctualityCompare != 0) return punctualityCompare;
+            
+            // Fifth: Compare by total hours worked
+            int hoursCompare = Double.compare(b.getTotalHoursWorked(), a.getTotalHoursWorked());
+            if (hoursCompare != 0) return hoursCompare;
+            
+            // Sixth: Compare by full name (alphabetical)
+            return a.getFullName().compareToIgnoreCase(b.getFullName());
+        });
 
         // Assign ranks and labels
         for (int i = 0; i < rankings.size(); i++) {
