@@ -46,7 +46,7 @@ public interface ShiftRepository extends JpaRepository<Shift, Long> {
            "WHERE s.store.id = :storeId AND s.isTemplate = true")
     List<Shift> findByStoreIdAndIsTemplateTrue(@Param("storeId") Long storeId);
     
-    @Query("SELECT s FROM Shift s WHERE s.store.id = :storeId AND (s.isTemplate = false OR s.isTemplate IS NULL) AND s.startDatetime >= :startDate AND s.endDatetime <= :endDate ORDER BY s.startDatetime")
+    @Query("SELECT s FROM Shift s WHERE s.store.id = :storeId AND (s.isTemplate = false OR s.isTemplate IS NULL) AND s.startDatetime >= :startDate AND s.startDatetime <= :endDate ORDER BY s.startDatetime")
     List<Shift> findActualShiftsByStoreAndDateRange(
             @Param("storeId") Long storeId, 
             @Param("startDate") LocalDateTime startDate, 

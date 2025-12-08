@@ -32,13 +32,20 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
 
   function getWeekStart(date: Date): Date {
     const d = new Date(date);
+    d.setHours(0, 0, 0, 0); // Normalize to start of day
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-    return new Date(d.setDate(diff));
+    const weekStart = new Date(d.setDate(diff));
+    weekStart.setHours(0, 0, 0, 0); // Ensure it's at 00:00:00
+    return weekStart;
   }
 
   function formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
+    // Format as YYYY-MM-DD using local date (not UTC) to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   function getDayName(dayOfWeek: number): string {
@@ -58,7 +65,7 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
   function getShiftTypeFromTime(startTime: string): string {
     const hour = new Date(startTime).getHours();
     if (hour < 12) return 'MORNING';
-    if (hour < 18) return 'AFTERNOON';
+    if (hour < 17) return 'AFTERNOON';
     return 'EVENING';
   }
 
@@ -67,19 +74,54 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
     
     setLoading(true);
     try {
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59);
+      // Ensure weekStart is at 00:00:00 to include all shifts from Monday
+      const weekStartNormalized = new Date(weekStart);
+      weekStartNormalized.setHours(0, 0, 0, 0);
       
-      const startDateStr = weekStart.toISOString();
-      const endDateStr = weekEnd.toISOString();
+      const weekEnd = new Date(weekStartNormalized);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      // Format as local datetime string to avoid timezone conversion issues
+      const formatDateTimeForAPI = (dt: Date): string => {
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const hours = String(dt.getHours()).padStart(2, '0');
+        const minutes = String(dt.getMinutes()).padStart(2, '0');
+        const seconds = String(dt.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      };
+      
+      const startDateStr = formatDateTimeForAPI(weekStartNormalized);
+      const endDateStr = formatDateTimeForAPI(weekEnd);
+      
+      console.log('Loading shifts for week:', {
+        weekStart: formatDate(weekStartNormalized),
+        weekEnd: formatDate(weekEnd),
+        startDateStr,
+        endDateStr,
+        weekStartLocal: weekStartNormalized.toString(),
+        weekEndLocal: weekEnd.toString()
+      });
       
       const [shiftsRes, myShiftsRes] = await Promise.all([
         shiftService.getShiftsForRegistration(user.storeId, startDateStr, endDateStr),
         shiftService.getMyShifts(startDateStr)
       ]);
       
-      setShifts(shiftsRes.data || []);
+      const allShifts = shiftsRes.data || [];
+      console.log('All shifts received from API:', allShifts.length);
+      console.log('Shifts data:', allShifts.map(s => ({
+        id: s.id,
+        title: s.title,
+        startDatetime: s.startDatetime,
+        endDatetime: s.endDatetime,
+        dateStr: formatDate(new Date(s.startDatetime)),
+        shiftType: getShiftTypeFromTime(s.startDatetime)
+      })));
+      
+      setShifts(allShifts);
       setMyShifts(myShiftsRes.data || []);
     } catch (error: any) {
       setToast({
@@ -141,7 +183,7 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
     const date = getDateForDay(day);
     const dateStr = formatDate(date);
     
-    return shifts.filter((shift: Shift) => {
+    const filtered = shifts.filter((shift: Shift) => {
       const shiftDate = new Date(shift.startDatetime);
       const shiftDateStr = formatDate(shiftDate);
       
@@ -156,12 +198,42 @@ const ShiftRegistration: React.FC<ShiftRegistrationProps> = ({ hideHeader = fals
       const timeB = new Date(b.startDatetime).getTime();
       return timeA - timeB;
     });
+    
+    // Debug log for Monday and Sunday shifts
+    if (day === 1 || day === 7) {
+      console.log(`getShiftsForDayAndType - ${getDayName(day)} (day ${day}), shiftType: ${shiftType}`, {
+        expectedDate: dateStr,
+        dayName: getDayName(day),
+        totalShifts: shifts.length,
+        filteredCount: filtered.length,
+        allShiftsForDay: shifts.filter(s => {
+          const sd = formatDate(new Date(s.startDatetime));
+          return sd === dateStr;
+        }).map(s => ({
+          id: s.id,
+          title: s.title,
+          startDatetime: s.startDatetime,
+          dateStr: formatDate(new Date(s.startDatetime)),
+          shiftType: getShiftTypeFromTime(s.startDatetime),
+          matchesType: getShiftTypeFromTime(s.startDatetime) === shiftType
+        })),
+        filteredShifts: filtered.map(s => ({
+          id: s.id,
+          title: s.title,
+          startDatetime: s.startDatetime
+        }))
+      });
+    }
+    
+    return filtered;
   };
 
   const getDateForDay = (dayOfWeek: number): Date => {
     const date = new Date(weekStart);
+    date.setHours(0, 0, 0, 0); // Normalize to start of day
     const diff = dayOfWeek - 1; // dayOfWeek is 1-7, we need 0-6
     date.setDate(date.getDate() + diff);
+    date.setHours(0, 0, 0, 0); // Ensure it's at 00:00:00
     return date;
   };
 
