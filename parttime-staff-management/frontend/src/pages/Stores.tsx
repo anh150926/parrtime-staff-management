@@ -82,6 +82,8 @@ const Stores: React.FC = () => {
         setToast({ show: true, message: 'Thêm cơ sở thành công!', type: 'success' });
       }
       handleCloseModal();
+      // Refresh stores list to ensure new store appears with edit/delete buttons
+      dispatch(fetchStores());
     } catch (err: any) {
       setToast({ show: true, message: err || 'Có lỗi xảy ra!', type: 'error' });
     }
@@ -131,10 +133,13 @@ const Stores: React.FC = () => {
                 </span>
                 <div className="dropdown">
                   <button
-                    className="btn btn-sm btn-link text-white"
+                    className="btn btn-sm btn-link"
                     data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    type="button"
+                    style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
                   >
-                    <i className="bi bi-three-dots-vertical"></i>
+                    <i className="bi bi-three-dots-vertical fs-5"></i>
                   </button>
                   <ul className="dropdown-menu dropdown-menu-end">
                     <li>

@@ -941,7 +941,7 @@ const Shifts: React.FC = () => {
                                       className="btn btn-sm btn-outline-primary flex-grow-1"
                                       onClick={() => handleOpenAssignModal(shift)}
                                       style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }}
-                                      title="Phân công nhân viên"
+                                      title={isOwner ? "Xem phân công nhân viên" : "Phân công nhân viên"}
                                     >
                                       <i className="bi bi-people"></i>
                                     </button>
@@ -1199,10 +1199,16 @@ const Shifts: React.FC = () => {
                   ></button>
                 </div>
                 <div className="modal-body">
+                  {isOwner && (
+                    <div className="alert alert-info mb-3">
+                      <i className="bi bi-info-circle me-2"></i>
+                      <strong>Chế độ xem:</strong> Với vai trò Chủ sở hữu, bạn chỉ có thể xem thông tin phân công. Các thao tác phân công và xóa phân công do Quản lý thực hiện.
+                    </div>
+                  )}
                   <div className="mb-3">
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <p className="text-muted mb-0">
-                        Quản lý phân công nhân viên cho ca này:
+                        {isOwner ? 'Thông tin phân công nhân viên cho ca này:' : 'Quản lý phân công nhân viên cho ca này:'}
                       </p>
                       <span className={`badge ${(selectedShift.assignments?.length || 0) >= selectedShift.requiredSlots ? 'bg-success' : 'bg-warning'}`}>
                         {selectedShift.assignments?.length || 0} / {selectedShift.requiredSlots} người
@@ -1244,18 +1250,20 @@ const Shifts: React.FC = () => {
                                     </small>
                                   </div>
                                 </div>
-                                <button
-                                  className="btn btn-sm btn-outline-danger"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (window.confirm(`Bạn có chắc chắn muốn xóa phân công cho ${staff.fullName}?`)) {
-                                      handleRemoveAssignment(assignment.userId);
-                                    }
-                                  }}
-                                  title="Xóa phân công"
-                                >
-                                  <i className="bi bi-trash"></i>
-                                </button>
+                                {canModify && (
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Bạn có chắc chắn muốn xóa phân công cho ${staff.fullName}?`)) {
+                                        handleRemoveAssignment(assignment.userId);
+                                      }
+                                    }}
+                                    title="Xóa phân công"
+                                  >
+                                    <i className="bi bi-trash"></i>
+                                  </button>
+                                )}
                               </div>
                             );
                           })}
@@ -1320,8 +1328,8 @@ const Shifts: React.FC = () => {
                               return !confirmedIds.includes(id);
                             });
                             const newCount = newUserIds.length;
-                            // Disable nếu đã đủ người và checkbox này chưa được chọn
-                            const isDisabled = remainingSlots <= 0 && !isSelected;
+                            // Disable nếu đã đủ người và checkbox này chưa được chọn, hoặc nếu là OWNER (chỉ xem)
+                            const isDisabled = !canModify || (remainingSlots <= 0 && !isSelected);
                             
                             return (
                               <label
@@ -1417,11 +1425,12 @@ const Shifts: React.FC = () => {
                   >
                     Hủy
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-coffee"
-                    onClick={handleAssignStaff}
-                    disabled={(() => {
+                  {canModify && (
+                    <button
+                      type="button"
+                      className="btn btn-coffee"
+                      onClick={handleAssignStaff}
+                      disabled={(() => {
                       const currentConfirmedCount = selectedShift.assignments?.filter((a: any) => a.status === 'CONFIRMED').length || 0;
                       const requiredSlots = selectedShift.requiredSlots || 1;
                       const remainingSlots = requiredSlots - currentConfirmedCount;
@@ -1448,7 +1457,8 @@ const Shifts: React.FC = () => {
                       const remainingSlots = requiredSlots - currentConfirmedCount;
                       return remainingSlots > 0 ? remainingSlots : requiredSlots;
                     })()})
-                  </button>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
